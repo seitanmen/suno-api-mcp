@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Suno Bridge (self-host api)
 // @namespace    suno-selfhost
-// @version      0.6.0
+// @version      0.7.0
 // @updateURL     https://raw.githubusercontent.com/seitanmen/suno-api-mcp/main/packages/userscript/suno-bridge.user.js
 // @downloadURL   https://raw.githubusercontent.com/seitanmen/suno-api-mcp/main/packages/userscript/suno-bridge.user.js
 // @description  Sunoのセッション（JWT/Cookie）をローカルAPIに中継する
@@ -312,12 +312,13 @@
     }
     const jwtShort = state.jwt ? state.jwt.slice(0, 10) + "..." : "未取得";
     el.innerHTML =
-      "<b>Suno Bridge v0.6.0</b><br>JWT: " + jwtShort +
+      "<b>Suno Bridge v0.7.0</b><br>JWT: " + jwtShort +
       "<br>送信: " + (state.sent ? new Date(state.sent).toLocaleTimeString() : "—") +
       (state.error ? "<br><span style='color:#f88'>" + state.error + "</span>" : "") +
       "<br><button id='suno-bridge-copy'>コピー</button> " +
       "<button id='suno-bridge-push'>今すぐ送信</button> " +
       "<button id='suno-bridge-dom'>DOM調査</button>" +
+      "<button id='suno-bridge-form'>フォーム調査</button>" +
       "<pre id='suno-bridge-apilog' style='max-height:100px;overflow:auto'></pre>" +
       "<textarea id='suno-bridge-domout' style='width:100%;height:60px;display:none'></textarea>";
     document.getElementById("suno-bridge-copy").onclick = () => {
@@ -333,6 +334,46 @@
       t.value = JSON.stringify(domDump(), null, 1).slice(0, 3000);
       t.select();
     };
+    document.getElementById("suno-bridge-form").onclick = () => {
+      const t = document.getElementById("suno-bridge-domout");
+      t.style.display = "block";
+      t.value = JSON.stringify(formDump(), null, 1).slice(0, 5000);
+      t.select();
+    };
+  }
+
+  function describeEl(el) {
+    const o = { tag: el.tagName.toLowerCase() };
+    if (el.id) o.id = el.id;
+    if (el.name) o.name = el.name;
+    if (el.getAttribute("placeholder")) o.ph = el.getAttribute("placeholder").slice(0, 60);
+    if (el.getAttribute("aria-label")) o.aria = el.getAttribute("aria-label").slice(0, 60);
+    if (el.getAttribute("data-testid")) o.testid = el.getAttribute("data-testid");
+    if (el.type) o.type = el.type;
+    const txt = (el.innerText || "").trim().slice(0, 40);
+    if (txt) o.text = txt;
+    o.cls = (el.className && el.className.baseVal !== undefined ? "" : String(el.className || "")).split(" ").slice(0, 3).join(" ");
+    return o;
+  }
+
+  function formDump() {
+    const out = { url: location.href, mode: [], fields: [], buttons: [] };
+    const all = document.querySelectorAll("textarea, input, select, [role=switch], [role=tab]");
+    all.forEach((el) => {
+      const r = el.getBoundingClientRect();
+      if (r.width === 0 && r.height === 0) return;
+      const d = describeEl(el);
+      d.textarea = el.tagName === "TEXTAREA";
+      d.value = String(el.value || "").slice(0, 60);
+      (el.tagName === "TEXTAREA" || el.type === "text" || !el.type ? out.fields : out.mode).push(d);
+    });
+    document.querySelectorAll("button").forEach((el) => {
+      const r = el.getBoundingClientRect();
+      if (r.width === 0 && r.height === 0) return;
+      const label = el.getAttribute("aria-label") || (el.innerText || "").trim().slice(0, 30);
+      if (/作成|シンプル|アドバンスド|カスタム|v4|v5|v6|インスト|create/i.test(label)) out.buttons.push(label);
+    });
+    return out;
   }
 
   new MutationObserver(() => {
