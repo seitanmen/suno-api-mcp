@@ -241,7 +241,7 @@ server.registerTool(
 server.registerTool(
   "suno_upload_image",
   {
-    description: "画像アップロード（生成時のuser_uploaded_image_ids用asset idを返す。data_base64で画像を渡す）",
+    description: "画像アップロード（user_uploaded_image_ids用のupload_idとモデレーション結果を返す。data_base64で画像を渡す）",
     inputSchema: { data_base64: z.string(), content_type: z.string().optional() },
   },
   async (args) => {

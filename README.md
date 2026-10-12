@@ -33,7 +33,7 @@
 | スピーチ生成 | `POST /v1/speech {prompt, backing_music?, vocal_gender?}` | ✅ |
 | 効果音生成 | `POST /v1/sounds {prompt}` | ✅ |
 | モデル一覧（動的取得） | `GET /v1/models` | ✅ |
-| 画像アップロード | `POST /v1/uploads/image {data_base64, content_type?}` | ⚠️ アカウント側403（Visuals aren't available）で検証不可 |
+| 画像アップロード | `POST /v1/uploads/image {data_base64, content_type?}` | ✅（upload_id＋モデレーション結果を返す） |
 | オーディオアップロード | `POST /v1/uploads/audio {data_base64, filename, upload_type?}` | ✅（`upload_failure_match_acrcloud`等の実応答で検証） |
 | ボイス（persona）作成・取得 | `POST /v1/persona` / `GET /v1/persona?id=...` | ✅ |
 | 参照（audio_refs/cover/sample/mashup等） | `POST /v1/songs` の追加フィールド | ⚠️ 形状確定・実行はcaptcha必須化＋クレジット枯渴のため未検証（回復後テスト予定） |

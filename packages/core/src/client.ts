@@ -337,22 +337,16 @@ export class SunoClient {
   }
 
   /** Image upload: presigned S3 -> complete -> asset. Returns asset id for user_uploaded_image_ids. */
+  /** Image upload for user_uploaded_image_ids: initiate -> S3 -> upload-finish (moderation). Returns { upload_id }. */
   async uploadImage(data: Uint8Array, contentType: string) {
-    const init = await this.api<any>("POST", "/api/visual/assets/uploads", {
-      contentType,
-      bytes: data.length,
-    });
-    const { asset, upload } = init as { asset: any; upload: { url: string; fields: Record<string, string> } };
-    await this.s3Post(upload.url, upload.fields, data, contentType, "upload");
-    await this.api("POST", `/api/visual/assets/uploads/${asset.id}/complete`, {});
-    for (let i = 0; i < 20; i++) {
-      await new Promise((r) => setTimeout(r, 3000));
-      const cur = await this.api<any>("GET", `/api/visual/assets/${asset.id}`);
-      const st = cur.asset?.status ?? cur.status;
-      if (st === "ready" || st === "complete") return { id: asset.id };
-      if (st === "failed") throw new Error(`image asset failed: ${cur.asset?.errorCode ?? cur.errorCode ?? "unknown"}`);
-    }
-    throw new Error("image asset timeout");
+    const extByType: Record<string, string> = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif" };
+    const ext = extByType[contentType] ?? contentType.split("/").pop() ?? "png";
+    const init = await this.api<any>("POST", "/api/uploads/image/", { extension: ext });
+    const uploadId = init.id as string;
+    await this.s3Post(init.url, init.fields, data, contentType, "image." + ext);
+    const fin = await this.api<any>("POST", `/api/uploads/image/${uploadId}/upload-finish/`, {});
+    if (fin?.moderation_status === "rejected") throw new Error("image moderation rejected");
+    return { upload_id: uploadId, moderation_status: fin?.moderation_status ?? "ok" };
   }
 
   /**
