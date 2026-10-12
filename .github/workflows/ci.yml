@@ -1,5 +1,8 @@
 name: ci
 on: [push, pull_request]
+defaults:
+  run:
+    shell: bash
 jobs:
   check:
     strategy:
