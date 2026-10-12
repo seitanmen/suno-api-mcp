@@ -19,8 +19,8 @@
 | 機能 | メソッド・パス | 状態 |
 |---|---|---|
 | 残量確認 | `GET /v1/credits` | ✅ |
-| シンプル生成 | `POST /v1/songs {prompt, tags?, model?}` | ✅ |
-| カスタム生成 | `POST /v1/songs {prompt, tags, title, negative_tags?, vocal_gender?, gen_duration?, is_max_mode?, control_sliders?}` | ✅ |
+| シンプル生成 | `POST /v1/songs {prompt, tags?, model?}` | ✅（captcha時はUIフォールバックで自動継続） |
+| カスタム生成 | `POST /v1/songs {prompt, tags, title, negative_tags?, vocal_gender?, gen_duration?, is_max_mode?, control_sliders?}` | ✅（captcha時はUIフォールバックで自動継続） |
 | 歌詞生成 | `POST /v1/lyrics {prompt}` | ✅ |
 | 生成待ち | `GET /v1/songs?ids=...` / `POST /v1/wait` | ✅ |
 | ライブラリ | `GET /v1/library` | ✅ |
@@ -36,10 +36,12 @@
 | 画像アップロード | `POST /v1/uploads/image {data_base64, content_type?}` | ⚠️ アカウント側403（Visuals aren't available）で検証不可 |
 | オーディオアップロード | `POST /v1/uploads/audio {data_base64, filename, upload_type?}` | ✅（`upload_failure_match_acrcloud`等の実応答で検証） |
 | ボイス（persona）作成・取得 | `POST /v1/persona` / `GET /v1/persona?id=...` | ✅ |
-| 参照（audio_refs/cover/sample/mashup等） | `POST /v1/songs` の追加フィールド | ⚠️ 形状確定・生成はcaptcha必須化のため保留 |
+| 参照（audio_refs/cover/sample/mashup等） | `POST /v1/songs` の追加フィールド | ⚠️ 形状確定・実行はcaptcha必須化＋クレジット枯渴のため未検証（回復後テスト予定） |
 | パーソナライズ単体API | —（生成時オプション `use_personalization` として対応） | ✅ |
 
 既定モデル: `chirp-hawk`（v6系で動作確認済み）。
+
+**captcha時代の生成（2026-10-12〜）**: 楽曲生成系POSTはTurnstileトークン必須のため直接APIは422。本プロジェクトは自動UIフォールバック（`generateViaUI`）で対応: bridge 0.7.7+のCMDCALLでプロンプト入力・作成ボタン集中 → osascriptの信頼キーボードで確定 → フィード監視で新クリップID返却。macOS＋Chrome（可視タブ推奨）＋`:4123` API稼働＋クレジットが必要。`SUNO_UI_FALLBACK=0`で無効化。
 
 ## MCPツール（24）
 
