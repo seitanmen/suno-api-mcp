@@ -267,8 +267,8 @@ server.registerTool(
 server.registerTool(
   "suno_create_persona",
   {
-    description: "ボイス（persona）作成。vox_audio_id等を指定",
-    inputSchema: { name: z.string(), vox_audio_id: z.string().optional() },
+    description: "ボイス（persona）作成。root_clip_id+description必須、またはvox_audio_id+vocal_start_s+vocal_end_s",
+    inputSchema: { name: z.string(), description: z.string().optional(), root_clip_id: z.string().optional(), vox_audio_id: z.string().optional(), vocal_start_s: z.number().optional(), vocal_end_s: z.number().optional() },
   },
   async (args) => ({
     content: [{ type: "text", text: JSON.stringify(await getClient().createPersona(args as any)) }],

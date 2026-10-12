@@ -28,22 +28,22 @@
 | 延長 | `POST /v1/extend {audio_id, ...}` | ✅ |
 | ステム分離 | `POST /v1/stems {song_id}` | ✅ |
 | プレイリスト作成・取得・追加・削除 | `POST /v1/playlists` / `GET /v1/playlists/:id` / `POST .../tracks` / `POST .../tracks/remove` | ✅ |
-| 結合 | `POST /v1/concat {clip_id}` | ⚠️ 形状確定も対象クリップ依存で未成功 |
+| 結合 | `POST /v1/concat {clip_id}` | ✅ |
 | 音声取得（再生経路・DL数非消費） | `GET /v1/download?id=...` | ✅ |
 | スピーチ生成 | `POST /v1/speech {prompt, backing_music?, vocal_gender?}` | ✅ |
 | 効果音生成 | `POST /v1/sounds {prompt}` | ✅ |
 | モデル一覧（動的取得） | `GET /v1/models` | ✅ |
-| 画像アップロード | `POST /v1/uploads/image {data_base64, content_type?}` | ⚠️ 実生成未検証 |
-| オーディオアップロード | `POST /v1/uploads/audio {data_base64, filename, upload_type?}` | ⚠️ 実生成未検証 |
-| ボイス（persona）作成・取得 | `POST /v1/persona` / `GET /v1/persona?id=...` | ⚠️ 実生成未検証 |
-| 参照（audio_refs/cover/sample/mashup等） | `POST /v1/songs` の追加フィールド | ⚠️ 実生成未検証 |
-| パーソナライズ単体API | —（生成時オプション `use_personalization` として対応） | ⚠️ |
+| 画像アップロード | `POST /v1/uploads/image {data_base64, content_type?}` | ⚠️ アカウント側403（Visuals aren't available）で検証不可 |
+| オーディオアップロード | `POST /v1/uploads/audio {data_base64, filename, upload_type?}` | ✅（`upload_failure_match_acrcloud`等の実応答で検証） |
+| ボイス（persona）作成・取得 | `POST /v1/persona` / `GET /v1/persona?id=...` | ✅ |
+| 参照（audio_refs/cover/sample/mashup等） | `POST /v1/songs` の追加フィールド | ⚠️ 形状確定・生成はcaptcha必須化のため保留 |
+| パーソナライズ単体API | —（生成時オプション `use_personalization` として対応） | ✅ |
 
 既定モデル: `chirp-hawk`（v6系で動作確認済み）。
 
-## MCPツール（22）
+## MCPツール（24）
 
-`suno_get_credits` / `suno_generate_song`（参照・モデル指定対応） / `suno_generate_from_description` / `suno_check_status` / `suno_wait_for_songs` / `suno_get_recent` / `suno_generate_lyrics` / `suno_get_clip` / `suno_download_song` / `suno_extend_song` / `suno_concat_clips` / `suno_generate_stems` / `suno_create_playlist` / `suno_get_playlist` / `suno_add_playlist_tracks` / `suno_remove_playlist_tracks` / `suno_generate_speech` / `suno_generate_sound` / `suno_get_models` / `suno_upload_image` / `suno_upload_audio` / `suno_create_persona`
+`suno_get_credits` / `suno_generate_song`（参照・モデル指定対応） / `suno_generate_from_description` / `suno_check_status` / `suno_wait_for_songs` / `suno_get_recent` / `suno_generate_lyrics` / `suno_get_clip` / `suno_download_song` / `suno_extend_song` / `suno_concat_clips` / `suno_generate_stems` / `suno_create_playlist` / `suno_get_playlist` / `suno_add_playlist_tracks` / `suno_remove_playlist_tracks` / `suno_generate_speech` / `suno_generate_sound` / `suno_get_models` / `suno_upload_image` / `suno_upload_audio` / `suno_create_persona` / `suno_check_upload` / `suno_get_persona`
 
 Claude Codeへの登録例:
 
