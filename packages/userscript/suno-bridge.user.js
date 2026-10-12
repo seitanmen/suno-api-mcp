@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Suno Bridge (self-host api)
 // @namespace    suno-selfhost
-// @version      0.4.1
+// @version      0.4.2
 // @description  Sunoのセッション（JWT/Cookie）をローカルAPIに中継する
 // @match        https://suno.com/*
 // @grant        GM_xmlhttpRequest
@@ -41,8 +41,23 @@
     };
     const origOpen = XMLHttpRequest.prototype.open;
     const origSet = XMLHttpRequest.prototype.setRequestHeader;
-    XMLHttpRequest.prototype.open = function () {
+    const origSend = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.open = function (method, url) {
+      try {
+        this._sunoMethod = method;
+        this._sunoUrl = String(url);
+      } catch (_) {}
       return origOpen.apply(this, arguments);
+    };
+    XMLHttpRequest.prototype.send = function (body) {
+      try {
+        let detail = this._sunoMethod + " " + this._sunoUrl;
+        if (/update_clips|generate\/v2|concat|playlist\/create/.test(this._sunoUrl || "") && body) {
+          detail += " ||| " + String(body).slice(0, 1500);
+        }
+        window.dispatchEvent(new CustomEvent("suno-bridge-api", { detail: detail }));
+      } catch (_) {}
+      return origSend.apply(this, arguments);
     };
     XMLHttpRequest.prototype.setRequestHeader = function (k, v) {
       try {
