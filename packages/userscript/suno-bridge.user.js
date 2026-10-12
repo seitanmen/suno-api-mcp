@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Suno Bridge (self-host api)
 // @namespace    suno-selfhost
-// @version      0.1.0
+// @version      0.2.0
 // @description  Sunoのセッション（JWT/Cookie）をローカルAPIに中継する
 // @match        https://suno.com/*
 // @grant        GM_xmlhttpRequest
@@ -14,8 +14,51 @@
 (function () {
   "use strict";
   const API = "http://localhost:4123/v1/auth/ingest";
+  const EVT = "suno-bridge-jwt";
   let lastSent = 0;
-  const state = { jwt: null, at: 0, sent: 0, error: "" };
+  const state = { jwt: GM_getValue("jwt", null), at: 0, sent: 0, error: "" };
+
+  function pageHook() {
+    const emit = (auth) => {
+      const m = typeof auth === "string" && auth.match(/^Bearer (.+)$/);
+      if (m) window.dispatchEvent(new CustomEvent("suno-bridge-jwt", { detail: m[1] }));
+    };
+    const origFetch = window.fetch;
+    window.fetch = function (input, init) {
+      try {
+        const h = (init && init.headers) || {};
+        if (h instanceof Headers) emit(h.get("Authorization"));
+        else emit(h.Authorization || h.authorization);
+      } catch (_) {}
+      return origFetch.apply(this, arguments);
+    };
+    const origOpen = XMLHttpRequest.prototype.open;
+    const origSet = XMLHttpRequest.prototype.setRequestHeader;
+    XMLHttpRequest.prototype.open = function () {
+      return origOpen.apply(this, arguments);
+    };
+    XMLHttpRequest.prototype.setRequestHeader = function (k, v) {
+      try {
+        if (/^authorization$/i.test(k)) emit(v);
+      } catch (_) {}
+      return origSet.apply(this, arguments);
+    };
+  }
+
+  const tag = document.createElement("script");
+  tag.textContent = "(" + pageHook.toString().replace(/suno-bridge-jwt/g, EVT) + ")();";
+  (document.head || document.documentElement).appendChild(tag);
+  tag.remove();
+
+  window.addEventListener(EVT, (e) => {
+    if (typeof e.detail === "string" && e.detail !== state.jwt) {
+      state.jwt = e.detail;
+      state.at = Date.now();
+      GM_setValue("jwt", e.detail);
+      render();
+      push();
+    }
+  });
 
   function parseCookies() {
     const out = {};
@@ -26,19 +69,9 @@
     return out;
   }
 
-  function maybeCapture(auth) {
-    const m = typeof auth === "string" && auth.match(/^Bearer (.+)$/);
-    if (m && m[1] !== state.jwt) {
-      state.jwt = m[1];
-      state.at = Date.now();
-      GM_setValue("jwt", m[1]);
-      push();
-    }
-  }
-
   function push() {
     const now = Date.now();
-    if (now - lastSent < 30000 || !state.jwt) return;
+    if (now - lastSent < 15000 || !state.jwt) return;
     lastSent = now;
     GM_xmlhttpRequest({
       method: "POST",
@@ -51,35 +84,11 @@
         render();
       },
       onerror: () => {
-        state.error = "API未起動？ bun run api を起動してください";
+        state.error = "API未起動？ このマシンで bun run api を起動してください";
         render();
       },
     });
   }
-
-  const origFetch = window.fetch;
-  window.fetch = function (input, init) {
-    try {
-      const h = (init && init.headers) || {};
-      if (h instanceof Headers) maybeCapture(h.get("Authorization"));
-      else maybeCapture(h.Authorization || h.authorization);
-    } catch (_) {}
-    return origFetch.apply(this, arguments);
-  };
-
-  const origOpen = XMLHttpRequest.prototype.open;
-  const origSet = XMLHttpRequest.prototype.setRequestHeader;
-  XMLHttpRequest.prototype.open = function () {
-    this._sunoHeaders = {};
-    return origOpen.apply(this, arguments);
-  };
-  XMLHttpRequest.prototype.setRequestHeader = function (k, v) {
-    try {
-      this._sunoHeaders[k] = v;
-      if (/^authorization$/i.test(k)) maybeCapture(v);
-    } catch (_) {}
-    return origSet.apply(this, arguments);
-  };
 
   function render() {
     let el = document.getElementById("suno-bridge-panel");
@@ -111,5 +120,4 @@
     if (!document.getElementById("suno-bridge-panel")) render();
   }).observe(document.documentElement, { childList: true, subtree: true });
   render();
-  state.jwt = GM_getValue("jwt", null);
 })();
