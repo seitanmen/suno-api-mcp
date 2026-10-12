@@ -310,6 +310,11 @@ export class SunoClient {
     });
     const uploadId = init.id as string;
     await this.s3Post(init.url, init.fields, data, opts?.contentType ?? "audio/mpeg", filename);
+    // App calls upload-finish immediately after S3 (processing starts only after finish).
+    await this.api("POST", `/api/uploads/audio/${uploadId}/upload-finish/`, {
+      upload_type: opts?.upload_type ?? "audio",
+      upload_filename: filename,
+    });
     let status: any = null;
     for (let i = 0; i < 60; i++) {
       await new Promise((r) => setTimeout(r, 5000));
@@ -320,7 +325,6 @@ export class SunoClient {
       }
     }
     if (status?.status !== "complete") throw new Error("audio processing timeout");
-    await this.api("POST", `/api/uploads/audio/${uploadId}/upload-finish/`, {});
     const clip = await this.api<any>("POST", `/api/uploads/audio/${uploadId}/initialize-clip/`, {});
     return { upload_id: uploadId, clip_id: clip.clip_id as string, title: status.title, has_vocal: status.has_vocal };
   }
