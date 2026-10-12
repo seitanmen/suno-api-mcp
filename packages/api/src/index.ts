@@ -20,13 +20,15 @@ function json(data: unknown, status = 200): Response {
 const probes = new Map<string, any>();
 const probeResults = new Map<string, any>();
 const apiLog: string[] = [];
+let bridgeVersion: string | null = null;
+let bridgeSeenAt: number | null = null;
 
 Bun.serve({
   port: PORT,
   async fetch(req) {
     const url = new URL(req.url);
     try {
-      if (url.pathname === "/health") return json({ ok: true });
+      if (url.pathname === "/health") return json({ ok: true, bridge_version: bridgeVersion, bridge_seen_at: bridgeSeenAt });
       if (url.pathname === "/v1/probe" && req.method === "POST") {
         const body = (await req.json()) as any;
         const id = Math.random().toString(36).slice(2, 10);
@@ -71,6 +73,7 @@ Bun.serve({
         const body = (await req.json()) as any;
         if (body.jwt) saveJwt(body.jwt);
         if (body.cookies) saveCookies({ ...loadCookies(), ...body.cookies });
+        if (typeof body.bridge_version === "string") { bridgeVersion = body.bridge_version; bridgeSeenAt = Date.now(); }
         if (body.session_id) getClient().setSession(body.session_id);
         return json({ ok: true });
       }

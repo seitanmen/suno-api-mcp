@@ -1,22 +1,79 @@
 // ==UserScript==
 // @name         Suno Bridge (self-host api)
 // @namespace    suno-selfhost
-// @version      0.7.5
+// @version      0.7.6
 // @updateURL     https://raw.githubusercontent.com/seitanmen/suno-api-mcp/main/packages/userscript/suno-bridge.user.js
 // @downloadURL   https://raw.githubusercontent.com/seitanmen/suno-api-mcp/main/packages/userscript/suno-bridge.user.js
 // @description  Sunoのセッション（JWT/Cookie）をローカルAPIに中継する
 // @match        https://suno.com/*
 // @allframes    1
 // @grant        GM_xmlhttpRequest
-// @grant        GM_setValue
+// @grant        GM_openInTab
 // @grant        GM_getValue
+// @grant        GM_setValue
 // @connect      localhost
+// @connect      raw.githubusercontent.com
 // @run-at       document-start
 // ==/UserScript==
 
 (function () {
   "use strict";
   const API = "http://localhost:4123/v1/auth/ingest";
+  const BRIDGE_VERSION = (() => { try { return GM_info.script.version; } catch (_) { return "0.0.0"; } })();
+  const DOWNLOAD_URL = "https://raw.githubusercontent.com/seitanmen/suno-api-mcp/main/packages/userscript/suno-bridge.user.js";
+
+  function cmpVer(a, b) {
+    const pa = String(a).split(".").map(Number), pb = String(b).split(".").map(Number);
+    for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+      const d = (pa[i] || 0) - (pb[i] || 0);
+      if (d !== 0) return d;
+    }
+    return 0;
+  }
+
+  function showUpdateBanner(latest) {
+    try {
+      if (document.getElementById("suno-bridge-update")) return;
+      const div = document.createElement("div");
+      div.id = "suno-bridge-update";
+      div.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#7c2d12;color:#fff;padding:8px 12px;font-size:13px;text-align:center;font-family:sans-serif;";
+      div.textContent = "Suno Bridge " + BRIDGE_VERSION + " → " + latest + " があります。更新してください ";
+      const btn = document.createElement("button");
+      btn.textContent = "今すぐ更新";
+      btn.style.cssText = "margin-left:8px;padding:2px 12px;cursor:pointer;";
+      btn.onclick = () => { try { GM_openInTab(DOWNLOAD_URL, { active: true }); } catch (_) { window.open(DOWNLOAD_URL, "_blank"); } };
+      const later = document.createElement("button");
+      later.textContent = "後で";
+      later.style.cssText = "margin-left:8px;padding:2px 12px;cursor:pointer;";
+      later.onclick = () => div.remove();
+      div.appendChild(btn);
+      div.appendChild(later);
+      (document.body || document.documentElement).appendChild(div);
+    } catch (_) {}
+  }
+
+  function checkUpdate() {
+    try {
+      GM_xmlhttpRequest({
+        method: "GET",
+        url: DOWNLOAD_URL + "?t=" + Date.now(),
+        onload: (res) => {
+          try {
+            const m = String(res.responseText || "").match(/@version\s+(\S+)/);
+            if (!m) return;
+            GM_setValue("upd_check", Date.now());
+            if (cmpVer(m[1], BRIDGE_VERSION) > 0) {
+              showUpdateBanner(m[1]);
+              if (GM_getValue("upd_prompted", "") !== m[1]) {
+                GM_setValue("upd_prompted", m[1]);
+                try { GM_openInTab(DOWNLOAD_URL, { active: true }); } catch (_) {}
+              }
+            }
+          } catch (_) {}
+        },
+      });
+    } catch (_) {}
+  }
   const isTop = (() => { try { return window.self === window.top; } catch (_) { return false; } })();
 
   function pageHook() {
@@ -273,7 +330,7 @@
       method: "POST",
       url: API,
       headers: { "Content-Type": "application/json" },
-      data: JSON.stringify({ jwt: state.jwt, cookies: parseCookies() }),
+      data: JSON.stringify({ jwt: state.jwt, cookies: parseCookies(), bridge_version: BRIDGE_VERSION }),
       onload: (res) => {
         state.sent = now;
         state.error = res.status === 200 ? "" : "HTTP " + res.status;
@@ -288,6 +345,13 @@
 
   setInterval(push, 60000);
   push();
+  // self-update check: every 6h + once shortly after load (top frame only)
+  try {
+    if (Date.now() - GM_getValue("upd_check", 0) > 6 * 3600 * 1000) checkUpdate();
+    setInterval(() => {
+      try { if (Date.now() - GM_getValue("upd_check", 0) > 6 * 3600 * 1000) checkUpdate(); } catch (_) {}
+    }, 3600000);
+  } catch (_) {}
 
   const apiLog = [];
   const FULLLOG = GM_getValue("fulllog", false);
