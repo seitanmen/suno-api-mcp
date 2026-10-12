@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Suno Bridge (self-host api)
 // @namespace    suno-selfhost
-// @version      0.3.0
+// @version      0.4.0
 // @description  Sunoのセッション（JWT/Cookie）をローカルAPIに中継する
 // @match        https://suno.com/*
 // @grant        GM_xmlhttpRequest
@@ -28,7 +28,11 @@
       try {
         const u = typeof input === "string" ? input : input.url;
         const m = (init && init.method) || "GET";
-        window.dispatchEvent(new CustomEvent("suno-bridge-api", { detail: m + " " + u }));
+        let detail = m + " " + u;
+        if (/update_clips|generate\/v2|concat|playlist\/create/.test(u) && init && init.body) {
+          detail += " ||| " + String(init.body).slice(0, 1500);
+        }
+        window.dispatchEvent(new CustomEvent("suno-bridge-api", { detail: detail }));
         const h = (init && init.headers) || {};
         if (h instanceof Headers) emit(h.get("Authorization"));
         else emit(h.Authorization || h.authorization);
@@ -54,7 +58,13 @@
   tag.remove();
 
   window.addEventListener("suno-bridge-api", (e) => {
-    if (typeof e.detail === "string") logApi(e.detail.split(" ")[0], e.detail.split(" ").slice(1).join(" "));
+    if (typeof e.detail !== "string") return;
+    const sp = e.detail.indexOf(" ");
+    const bar = e.detail.indexOf(" ||| ");
+    const method = e.detail.slice(0, sp);
+    const url = bar > 0 ? e.detail.slice(sp + 1, bar) : e.detail.slice(sp + 1);
+    const body = bar > 0 ? e.detail.slice(bar + 5) : null;
+    logApi(method, url, body);
   });
   window.addEventListener(EVT, (e) => {
     if (typeof e.detail === "string" && e.detail !== state.jwt) {
@@ -97,12 +107,13 @@
   }
 
   const apiLog = [];
-  function logApi(method, url) {
+  function logApi(method, url, body) {
     try {
       const u = new URL(url, location.href);
       if (!/suno\.com$|suno\.com/.test(u.hostname)) return;
       if (!u.pathname.startsWith("/api/")) return;
-      const line = method + " " + u.pathname;
+      let line = method + " " + u.pathname;
+      if (body) line += " ||| " + body;
       if (apiLog[apiLog.length - 1] !== line) {
         apiLog.push(line);
         if (apiLog.length > 15) apiLog.shift();
