@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Suno Bridge (self-host api)
 // @namespace    suno-selfhost
-// @version      0.7.4
+// @version      0.7.5
 // @updateURL     https://raw.githubusercontent.com/seitanmen/suno-api-mcp/main/packages/userscript/suno-bridge.user.js
 // @downloadURL   https://raw.githubusercontent.com/seitanmen/suno-api-mcp/main/packages/userscript/suno-bridge.user.js
 // @description  Sunoのセッション（JWT/Cookie）をローカルAPIに中継する
@@ -86,6 +86,28 @@
       try {
         p = typeof e.detail === "string" ? JSON.parse(e.detail) : e.detail;
       } catch (_) { return; }
+      const done = (status, text) => {
+        window.dispatchEvent(new CustomEvent("suno-bridge-probe-done", {
+          detail: JSON.stringify({ id: p.id, status: status, text: String(text).slice(0, 400000) }),
+        }));
+      };
+      if (typeof p.js === "string" && p.js.length > 0) {
+        // JS eval probe: runs in page context (access to window.turnstile, etc.)
+        try {
+          const fn = new Function("return (async () => { " + p.js + " })();");
+          Promise.resolve(fn()).then(
+            (r) => {
+              let out;
+              try { out = JSON.stringify(r); } catch (_) { out = String(r); }
+              done(200, out === undefined ? "undefined" : out);
+            },
+            (err) => done(500, "JSERR: " + String(err && err.stack || err).slice(0, 1000))
+          );
+        } catch (err) {
+          done(500, "JSERR: " + String(err).slice(0, 500));
+        }
+        return;
+      }
       const headers = { "Content-Type": "application/json" };
       if (p.token) headers.Authorization = "Bearer " + p.token;
       fetch(p.base + p.path, {

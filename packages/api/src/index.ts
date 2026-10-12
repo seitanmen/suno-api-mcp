@@ -37,7 +37,7 @@ Bun.serve({
         for (const [id, p] of probes) {
           if (!p.claimed) {
             p.claimed = true;
-            return json({ id, method: p.method, path: p.path, body: p.body ?? null, base: p.base ?? null, token: p.token ?? null });
+            return json({ id, method: p.method, path: p.path, body: p.body ?? null, base: p.base ?? null, token: p.token ?? null, js: p.js ?? null });
           }
         }
         return new Response(null, { status: 204 });
