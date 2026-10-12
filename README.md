@@ -19,8 +19,8 @@
 | 機能 | メソッド・パス | 状態 |
 |---|---|---|
 | 残量確認 | `GET /v1/credits` | ✅ |
-| シンプル生成 | `POST /v1/songs {prompt, tags?, model?}` | ✅（captcha時はUIフォールバックで自動継続） |
-| カスタム生成 | `POST /v1/songs {prompt, tags, title, negative_tags?, vocal_gender?, gen_duration?, is_max_mode?, control_sliders?}` | ✅（captcha時はUIフォールバックで自動継続） |
+| シンプル生成 | `POST /v1/songs {prompt, tags?, model?}` | ✅（直接POST検証済み。422時はUIフォールバックで自動継続） |
+| カスタム生成 | `POST /v1/songs {prompt, tags, title, negative_tags?, vocal_gender?, gen_duration?, is_max_mode?, control_sliders?}` | ✅（直接POST検証済み。422時はUIフォールバックで自動継続） |
 | 歌詞生成 | `POST /v1/lyrics {prompt}` | ✅ |
 | 生成待ち | `GET /v1/songs?ids=...` / `POST /v1/wait` | ✅ |
 | ライブラリ | `GET /v1/library` | ✅ |
@@ -34,9 +34,9 @@
 | 効果音生成 | `POST /v1/sounds {prompt}` | ✅ |
 | モデル一覧（動的取得） | `GET /v1/models` | ✅ |
 | 画像アップロード | `POST /v1/uploads/image {data_base64, content_type?}` | ✅（upload_id＋モデレーション結果を返す） |
-| オーディオアップロード | `POST /v1/uploads/audio {data_base64, filename, upload_type?}` | ✅（`upload_failure_match_acrcloud`等の実応答で検証） |
+| オーディオアップロード | `POST /v1/uploads/audio {data_base64, filename, upload_type?}` | ✅（upload_type=file_upload。acrcloud拒否挙動も検証済み） |
 | ボイス（persona）作成・取得 | `POST /v1/persona` / `GET /v1/persona?id=...` | ✅ |
-| 参照（audio_refs/cover/sample/mashup等） | `POST /v1/songs` の追加フィールド | ⚠️ 形状確定・実行はcaptcha必須化＋クレジット枯渴のため未検証（回復後テスト予定） |
+| 参照（audio_refs/cover/sample/mashup等） | `POST /v1/songs` の追加フィールド | ✅ audio_refsをlive検証（upload→生成94.8s/83.6s→DL迄完走） |
 | パーソナライズ単体API | —（生成時オプション `use_personalization` として対応） | ✅ |
 
 既定モデル: `chirp-hawk`（v6系で動作確認済み）。

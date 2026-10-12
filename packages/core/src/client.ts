@@ -358,13 +358,12 @@ export class SunoClient {
     const init = await this.api<any>("POST", "/api/uploads/audio/", {
       extension: ext,
       is_stem_mix: opts?.is_stem_mix ?? false,
-      ...(opts?.upload_type ? { upload_type: opts.upload_type } : {}),
+      upload_type: opts?.upload_type ?? "file_upload",
     });
     const uploadId = init.id as string;
     await this.s3Post(init.url, init.fields, data, opts?.contentType ?? "audio/mpeg", filename);
-    // App calls upload-finish immediately after S3 (processing starts only after finish).
     await this.api("POST", `/api/uploads/audio/${uploadId}/upload-finish/`, {
-      upload_type: opts?.upload_type ?? "audio",
+      upload_type: opts?.upload_type ?? "file_upload",
       upload_filename: filename,
     });
     let status: any = null;
