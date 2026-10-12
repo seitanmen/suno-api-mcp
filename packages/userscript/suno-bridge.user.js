@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Suno Bridge (self-host api)
 // @namespace    suno-selfhost
-// @version      0.2.0
+// @version      0.3.0
 // @description  Sunoのセッション（JWT/Cookie）をローカルAPIに中継する
 // @match        https://suno.com/*
 // @grant        GM_xmlhttpRequest
@@ -26,6 +26,9 @@
     const origFetch = window.fetch;
     window.fetch = function (input, init) {
       try {
+        const u = typeof input === "string" ? input : input.url;
+        const m = (init && init.method) || "GET";
+        window.dispatchEvent(new CustomEvent("suno-bridge-api", { detail: m + " " + u }));
         const h = (init && init.headers) || {};
         if (h instanceof Headers) emit(h.get("Authorization"));
         else emit(h.Authorization || h.authorization);
@@ -50,6 +53,9 @@
   (document.head || document.documentElement).appendChild(tag);
   tag.remove();
 
+  window.addEventListener("suno-bridge-api", (e) => {
+    if (typeof e.detail === "string") logApi(e.detail.split(" ")[0], e.detail.split(" ").slice(1).join(" "));
+  });
   window.addEventListener(EVT, (e) => {
     if (typeof e.detail === "string" && e.detail !== state.jwt) {
       state.jwt = e.detail;
@@ -90,6 +96,39 @@
     });
   }
 
+  const apiLog = [];
+  function logApi(method, url) {
+    try {
+      const u = new URL(url, location.href);
+      if (!/suno\.com$|suno\.com/.test(u.hostname)) return;
+      if (!u.pathname.startsWith("/api/")) return;
+      const line = method + " " + u.pathname;
+      if (apiLog[apiLog.length - 1] !== line) {
+        apiLog.push(line);
+        if (apiLog.length > 15) apiLog.shift();
+        const pre = document.getElementById("suno-bridge-apilog");
+        if (pre) pre.textContent = apiLog.join("\n");
+      }
+    } catch (_) {}
+  }
+
+  function domDump() {
+    const out = { url: location.href, captcha: [], fields: [], buttons: [] };
+    document.querySelectorAll("iframe").forEach((f) => {
+      if (/captcha/i.test(f.src || f.title || "")) out.captcha.push(f.src || f.title);
+    });
+    document.querySelectorAll("[data-sitekey]").forEach((el) => out.captcha.push(el.getAttribute("data-sitekey")));
+    document.querySelectorAll("textarea, input[type=text], input:not([type])").forEach((el) => {
+      out.fields.push(el.getAttribute("placeholder") || el.getAttribute("aria-label") || el.className.toString().slice(0, 80));
+    });
+    document.querySelectorAll("button").forEach((el) => {
+      const label = el.getAttribute("aria-label") || el.innerText.trim().slice(0, 30);
+      if (label) out.buttons.push(label);
+    });
+    out.hasHcaptcha = typeof window.hcaptcha !== "undefined";
+    return out;
+  }
+
   function render() {
     let el = document.getElementById("suno-bridge-panel");
     if (!el) {
@@ -106,13 +145,22 @@
       "<br>送信: " + (state.sent ? new Date(state.sent).toLocaleTimeString() : "—") +
       (state.error ? "<br><span style='color:#f88'>" + state.error + "</span>" : "") +
       "<br><button id='suno-bridge-copy'>コピー</button> " +
-      "<button id='suno-bridge-push'>今すぐ送信</button>";
+      "<button id='suno-bridge-push'>今すぐ送信</button> " +
+      "<button id='suno-bridge-dom'>DOM調査</button>" +
+      "<pre id='suno-bridge-apilog' style='max-height:100px;overflow:auto'></pre>" +
+      "<textarea id='suno-bridge-domout' style='width:100%;height:60px;display:none'></textarea>";
     document.getElementById("suno-bridge-copy").onclick = () => {
       navigator.clipboard.writeText(JSON.stringify({ jwt: state.jwt, cookies: parseCookies() }));
     };
     document.getElementById("suno-bridge-push").onclick = () => {
       lastSent = 0;
       push();
+    };
+    document.getElementById("suno-bridge-dom").onclick = () => {
+      const t = document.getElementById("suno-bridge-domout");
+      t.style.display = "block";
+      t.value = JSON.stringify(domDump(), null, 1).slice(0, 3000);
+      t.select();
     };
   }
 

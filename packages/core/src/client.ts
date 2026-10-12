@@ -23,7 +23,7 @@ export interface SongInfo {
   created_at: string;
 }
 
-const DEFAULT_MODEL = "V5";
+const DEFAULT_MODEL = "chirp-v3-5";
 
 export class SunoClient {
   private cookies: Record<string, string>;
@@ -42,9 +42,14 @@ export class SunoClient {
   }
 
   private headers(extra: Record<string, string> = {}): Record<string, string> {
+    const deviceId = this.cookies["suno_device_id"] ?? this.cookies["ajs_anonymous_id"] ?? "unknown";
     const h: Record<string, string> = {
       Cookie: cookieHeader(this.cookies),
       "Content-Type": "application/json",
+      "Affiliate-Id": "undefined",
+      "Device-Id": `"${deviceId}"`,
+      "x-suno-client": "Android prerelease-4nt180t 1.0.42",
+      "X-Requested-With": "com.suno.android",
       ...extra,
     };
     if (this.jwt) h["Authorization"] = `Bearer ${this.jwt}`;
@@ -205,5 +210,37 @@ export class SunoClient {
 
   async clip(clipId: string) {
     return this.api("GET", `/api/clip/${clipId}`);
+  }
+
+  async extendAudio(audioId: string, opts: { prompt?: string; tags?: string; title?: string; continueAt?: number; model?: string }) {
+    const payload: Record<string, unknown> = {
+      make_instrumental: false,
+      mv: opts.model ?? DEFAULT_MODEL,
+      prompt: opts.prompt ?? "",
+      generation_type: "TEXT",
+      tags: opts.tags ?? "",
+      title: opts.title ?? "",
+      task: "extend",
+      continue_clip_id: audioId,
+      continue_at: opts.continueAt,
+    };
+    const data = await this.api<any>("POST", "/api/generate/v2/", payload);
+    return (data.clips as any[]).map((c) => c.id as string);
+  }
+
+  async concatenate(clipId: string) {
+    return this.api("POST", "/api/generate/concat/v2/", { clip_id: clipId });
+  }
+
+  async generateStems(songId: string) {
+    return this.api("POST", `/api/edit/stems/${songId}`, {});
+  }
+
+  async createPlaylist(name: string) {
+    return this.api<any>("POST", "/api/playlist/create", { name });
+  }
+
+  async getPlaylist(playlistId: string) {
+    return this.api<any>("GET", `/api/playlist/${playlistId}`);
   }
 }
