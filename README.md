@@ -36,7 +36,7 @@
 | 画像アップロード | `POST /v1/uploads/image {data_base64, content_type?}` | ✅（upload_id＋モデレーション結果を返す） |
 | オーディオアップロード | `POST /v1/uploads/audio {data_base64, filename, upload_type?}` | ✅（upload_type=file_upload。acrcloud拒否挙動も検証済み） |
 | ボイス（persona）作成・取得 | `POST /v1/persona` / `GET /v1/persona?id=...` | ✅ |
-| 参照（audio_refs/cover/sample/mashup等） | `POST /v1/songs` の追加フィールド | ⚠️ 形状確定・実生成未検証 |
+| 参照（audio_refs/cover/sample/mashup等） | `POST /v1/songs` の追加フィールド | ✅ |
 | パーソナライズ単体API | —（生成時オプション `use_personalization` として対応） | ✅ |
 
 既定モデル: `chirp-hawk`（v6系で動作確認済み）。
