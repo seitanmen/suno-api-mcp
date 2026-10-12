@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         Suno Bridge (self-host api)
 // @namespace    suno-selfhost
-// @version      0.4.5
+// @version      0.5.0
 // @updateURL     https://raw.githubusercontent.com/seitanmen/suno-api-mcp/main/packages/userscript/suno-bridge.user.js
 // @downloadURL   https://raw.githubusercontent.com/seitanmen/suno-api-mcp/main/packages/userscript/suno-bridge.user.js
 // @description  Sunoのセッション（JWT/Cookie）をローカルAPIに中継する
 // @match        https://suno.com/*
+// @allframes    1
 // @grant        GM_xmlhttpRequest
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -16,30 +17,36 @@
 (function () {
   "use strict";
   const API = "http://localhost:4123/v1/auth/ingest";
-  const EVT = "suno-bridge-jwt";
-  let lastSent = 0;
-  const state = { jwt: GM_getValue("jwt", null), at: 0, sent: 0, error: "" };
+  const isTop = (() => { try { return window.self === window.top; } catch (_) { return false; } })();
 
   function pageHook() {
-    const emit = (auth) => {
+    const emitJwt = (auth) => {
       const m = typeof auth === "string" && auth.match(/^Bearer (.+)$/);
       if (m) window.dispatchEvent(new CustomEvent("suno-bridge-jwt", { detail: m[1] }));
     };
+    const emitApi = (detail) => {
+      window.dispatchEvent(new CustomEvent("suno-bridge-api", { detail: detail }));
+    };
+    const interesting = (u) => /update_clips|generate\/v2|concat|playlist|generate\/lyrics|stems/.test(u || "");
     const origFetch = window.fetch;
     window.fetch = function (input, init) {
+      let u, m;
       try {
-        const u = typeof input === "string" ? input : input.url;
-        const m = (init && init.method) || "GET";
+        u = typeof input === "string" ? input : input.url;
+        m = (init && init.method) || "GET";
         let detail = m + " " + u;
-        if (/update_clips|generate\/v2|concat|playlist\/create/.test(u) && init && init.body) {
-          detail += " ||| " + String(init.body).slice(0, 1500);
-        }
-        window.dispatchEvent(new CustomEvent("suno-bridge-api", { detail: detail }));
+        if (interesting(u) && init && init.body) detail += " ||| " + String(init.body).slice(0, 1500);
+        emitApi(detail);
         const h = (init && init.headers) || {};
-        if (h instanceof Headers) emit(h.get("Authorization"));
-        else emit(h.Authorization || h.authorization);
+        if (h instanceof Headers) emitJwt(h.get("Authorization"));
+        else emitJwt(h.Authorization || h.authorization);
       } catch (_) {}
-      return origFetch.apply(this, arguments);
+      return origFetch.apply(this, arguments).then((res) => {
+        try {
+          if (interesting(u)) emitApi(m + " " + u + " -> " + res.status);
+        } catch (_) {}
+        return res;
+      });
     };
     const origOpen = XMLHttpRequest.prototype.open;
     const origSet = XMLHttpRequest.prototype.setRequestHeader;
@@ -54,58 +61,133 @@
     XMLHttpRequest.prototype.send = function (body) {
       try {
         let detail = this._sunoMethod + " " + this._sunoUrl;
-        if (/update_clips|generate\/v2|concat|playlist\/create/.test(this._sunoUrl || "") && body) {
-          detail += " ||| " + String(body).slice(0, 1500);
-        }
-        window.dispatchEvent(new CustomEvent("suno-bridge-api", { detail: detail }));
+        if (interesting(this._sunoUrl) && body) detail += " ||| " + String(body).slice(0, 1500);
+        emitApi(detail);
       } catch (_) {}
       return origSend.apply(this, arguments);
     };
     XMLHttpRequest.prototype.setRequestHeader = function (k, v) {
       try {
-        if (/^authorization$/i.test(k)) emit(v);
+        if (/^authorization$/i.test(k)) emitJwt(v);
       } catch (_) {}
       return origSet.apply(this, arguments);
     };
-    const origBeacon = navigator.sendBeacon.bind(navigator);
-    navigator.sendBeacon = function (url, data) {
-      try {
-        window.dispatchEvent(new CustomEvent("suno-bridge-api", { detail: "BEACON " + url + " ||| " + String(data).slice(0, 1500) }));
-      } catch (_) {}
-      return origBeacon(url, data);
-    };
+    try {
+      const origBeacon = navigator.sendBeacon.bind(navigator);
+      navigator.sendBeacon = function (url, data) {
+        try {
+          emitApi("BEACON " + url + " ||| " + String(data).slice(0, 1500));
+        } catch (_) {}
+        return origBeacon(url, data);
+      };
+    } catch (_) {}
   }
 
-  const tag = document.createElement("script");
-  tag.textContent = "(" + pageHook.toString().replace(/suno-bridge-jwt/g, EVT) + ")();";
-  (document.head || document.documentElement).appendChild(tag);
-  tag.remove();
+  function injectHook() {
+    try {
+      const tag = document.createElement("script");
+      tag.textContent = "(" + pageHook.toString() + ")();";
+      (document.head || document.documentElement).appendChild(tag);
+      tag.remove();
+    } catch (_) {}
+  }
 
+  function relayPush(kind, detail) {
+    try {
+      const list = GM_getValue("relay", []);
+      list.push({ k: kind, d: String(detail).slice(0, 2000), t: Date.now() });
+      while (list.length > 100) list.shift();
+      GM_setValue("relay", list);
+    } catch (_) {}
+  }
+
+  if (!isTop) {
+    injectHook();
+    window.addEventListener("suno-bridge-jwt", (e) => {
+      if (typeof e.detail === "string") {
+        GM_setValue("jwt", e.detail);
+        relayPush("jwt", e.detail.slice(0, 20) + "...");
+      }
+    });
+    window.addEventListener("suno-bridge-api", (e) => {
+      if (typeof e.detail === "string") relayPush("api", e.detail);
+    });
+    return;
+  }
+
+  let lastSent = 0;
+  const state = { jwt: GM_getValue("jwt", null), at: 0, sent: 0, error: "" };
+  injectHook();
+
+  function handleJwt(token) {
+    if (typeof token === "string" && token !== state.jwt) {
+      state.jwt = token;
+      state.at = Date.now();
+      GM_setValue("jwt", token);
+      render();
+      push();
+    }
+  }
+
+  window.addEventListener("suno-bridge-jwt", (e) => handleJwt(e.detail));
   window.addEventListener("suno-bridge-api", (e) => {
     if (typeof e.detail !== "string") return;
     const sp = e.detail.indexOf(" ");
     const bar = e.detail.indexOf(" ||| ");
+    const arrow = e.detail.indexOf(" -> ");
     const method = e.detail.slice(0, sp);
-    const url = bar > 0 ? e.detail.slice(sp + 1, bar) : e.detail.slice(sp + 1);
-    const body = bar > 0 ? e.detail.slice(bar + 5) : null;
+    let url, body;
+    if (bar > 0) {
+      url = e.detail.slice(sp + 1, bar);
+      body = e.detail.slice(bar + 5);
+    } else if (arrow > 0) {
+      url = e.detail.slice(sp + 1, arrow);
+      body = "HTTP " + e.detail.slice(arrow + 4);
+    } else {
+      url = e.detail.slice(sp + 1);
+      body = null;
+    }
     logApi(method, url, body);
   });
-  window.addEventListener(EVT, (e) => {
-    if (typeof e.detail === "string" && e.detail !== state.jwt) {
-      state.jwt = e.detail;
-      state.at = Date.now();
-      GM_setValue("jwt", e.detail);
-      render();
-      push();
-    }
-  });
+
+  setInterval(() => {
+    try {
+      const list = GM_getValue("relay", []);
+      if (!list.length) return;
+      GM_setValue("relay", []);
+      for (const item of list) {
+        if (item.k === "api" && typeof item.d === "string") {
+          const sp = item.d.indexOf(" ");
+          const bar = item.d.indexOf(" ||| ");
+          const arrow = item.d.indexOf(" -> ");
+          const method = item.d.slice(0, sp);
+          let url, body;
+          if (bar > 0) {
+            url = item.d.slice(sp + 1, bar);
+            body = item.d.slice(bar + 5);
+          } else if (arrow > 0) {
+            url = item.d.slice(sp + 1, arrow);
+            body = "HTTP " + item.d.slice(arrow + 4);
+          } else {
+            url = item.d.slice(sp + 1);
+            body = null;
+          }
+          logApi("[f] " + method, url, body);
+        }
+      }
+      const j = GM_getValue("jwt", null);
+      if (j) handleJwt(j);
+    } catch (_) {}
+  }, 2000);
 
   function parseCookies() {
     const out = {};
-    for (const part of document.cookie.split(";")) {
-      const eq = part.indexOf("=");
-      if (eq > 0) out[part.slice(0, eq).trim()] = part.slice(eq + 1).trim();
-    }
+    try {
+      for (const part of document.cookie.split(";")) {
+        const eq = part.indexOf("=");
+        if (eq > 0) out[part.slice(0, eq).trim()] = part.slice(eq + 1).trim();
+      }
+    } catch (_) {}
     return out;
   }
 
@@ -135,8 +217,8 @@
     try {
       const u = new URL(url, location.href);
       if (!/suno\.com/.test(u.hostname)) return;
-      const isMutation = /^(POST|PUT|PATCH|DELETE|BEACON)$/.test(method);
-      if (!u.pathname.startsWith("/api/") && !isMutation) return;
+      const isMutation = /^(POST|PUT|PATCH|DELETE|BEACON|\[f\] (POST|PUT|PATCH|DELETE|BEACON))$/.test(method);
+      if (!u.pathname.startsWith("/api/") && !u.pathname.startsWith("/v1/") && !isMutation) return;
       let line = method + " " + u.pathname + u.search;
       if (body) line += " ||| " + body;
       if (apiLog[apiLog.length - 1] !== line) {
@@ -177,7 +259,7 @@
     }
     const jwtShort = state.jwt ? state.jwt.slice(0, 10) + "..." : "未取得";
     el.innerHTML =
-      "<b>Suno Bridge v0.4.5</b><br>JWT: " + jwtShort +
+      "<b>Suno Bridge v0.5.0</b><br>JWT: " + jwtShort +
       "<br>送信: " + (state.sent ? new Date(state.sent).toLocaleTimeString() : "—") +
       (state.error ? "<br><span style='color:#f88'>" + state.error + "</span>" : "") +
       "<br><button id='suno-bridge-copy'>コピー</button> " +
