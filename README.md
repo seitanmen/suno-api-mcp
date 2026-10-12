@@ -1,5 +1,7 @@
 # suno-api (self-host)
 
+日本語 | [English](README.en.md) | [中文](README.zh.md) | [한국어](README.ko.md)
+
 自分の Suno アカウントで動くセルフホスト API + MCP ブリッジ。非公式・個人利用向け。
 
 ## 導入（3ステップ）
@@ -27,14 +29,14 @@
 | ステム分離 | `POST /v1/stems {song_id}` | ✅ |
 | プレイリスト作成・取得・追加・削除 | `POST /v1/playlists` / `GET /v1/playlists/:id` / `POST .../tracks` / `POST .../tracks/remove` | ✅ |
 | 結合 | `POST /v1/concat {clip_id}` | ⚠️ 形状確定も対象クリップ依存で未成功 |
-| 音声バイト取得 | `audio_url`（暗号化＋DL権限制限あり） | ❌ 取得不可 |
+| 音声取得（再生経路・DL数非消費） | `GET /v1/download?id=...` | ✅ |
 | スピーチ／サウンド／パーソナライズ | — | ❌ 未対応 |
 
 既定モデル: `chirp-hawk`（v6系で動作確認済み）。
 
-## MCPツール（15）
+## MCPツール（16）
 
-`suno_get_credits` / `suno_generate_song`（高度なオプション対応） / `suno_generate_from_description` / `suno_check_status` / `suno_wait_for_songs` / `suno_get_recent` / `suno_generate_lyrics` / `suno_get_clip` / `suno_extend_song` / `suno_concat_clips` / `suno_generate_stems` / `suno_create_playlist` / `suno_get_playlist` / `suno_add_playlist_tracks` / `suno_remove_playlist_tracks`
+`suno_get_credits` / `suno_generate_song`（高度なオプション対応） / `suno_generate_from_description` / `suno_check_status` / `suno_wait_for_songs` / `suno_get_recent` / `suno_generate_lyrics` / `suno_get_clip` / `suno_download_song` / `suno_extend_song` / `suno_concat_clips` / `suno_generate_stems` / `suno_create_playlist` / `suno_get_playlist` / `suno_add_playlist_tracks` / `suno_remove_playlist_tracks`
 
 Claude Codeへの登録例:
 

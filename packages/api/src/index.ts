@@ -99,6 +99,17 @@ Bun.serve({
         if (!id) return json({ error: "id required" }, 400);
         return json(await getClient().clip(id));
       }
+      if (url.pathname === "/v1/download" && req.method === "GET") {
+        const id = url.searchParams.get("id");
+        if (!id) return json({ error: "id required" }, 400);
+        const dl = await getClient().downloadClip(id);
+        return new Response(dl.bytes, {
+          headers: {
+            "Content-Type": dl.ext === "webm" ? "audio/webm" : "audio/mp4",
+            "Content-Disposition": `attachment; filename="${encodeURIComponent(dl.filename)}"`,
+          },
+        });
+      }
       if (url.pathname === "/v1/extend" && req.method === "POST") {
         const body = (await req.json()) as any;
         if (!body.audio_id) return json({ error: "audio_id required" }, 400);

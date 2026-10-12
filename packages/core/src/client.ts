@@ -228,6 +228,38 @@ export class SunoClient {
     return this.api("GET", `/api/clip/${clipId}`);
   }
 
+  /** Playback-path audio fetch (AES-CTR decrypt). Does not use the counted download endpoint. */
+  async downloadClip(clipId: string): Promise<{ filename: string; ext: string; bytes: Uint8Array }> {
+    const clip = (await this.clip(clipId)) as any;
+    const audioUrl: string | undefined = clip.audio_url;
+    if (!audioUrl) throw new Error("audio_url がありません");
+    const contentType: string = clip.content_type ?? clip.media_urls?.[0]?.content_type ?? "m4a-opus";
+    const rights = await this.api<any>("POST", "/api/mango/rights", {
+      content_params: { content_id: clipId, content_type: contentType },
+    });
+    if (!this.jwt) throw new Error("JWTがありません");
+    const enc = new TextEncoder();
+    const sha = async (s: string) =>
+      crypto.subtle.importKey("raw", await crypto.subtle.digest("SHA-256", enc.encode(s)), { name: "AES-GCM" }, false, ["decrypt"]);
+    const userKey = await sha(this.jwt);
+    const g = rights.glt ? await sha(rights.glt) : userKey;
+    const b64 = (s: string) => Uint8Array.from(atob(s), (ch) => ch.charCodeAt(0));
+    const unwrap = async (w: Uint8Array) =>
+      crypto.subtle.decrypt({ name: "AES-GCM", iv: w.slice(0, 12), additionalData: enc.encode(clipId) }, g, w.slice(12));
+    const ctrKey = await crypto.subtle.importKey("raw", await unwrap(b64(rights.key)), { name: "AES-CTR" }, false, ["decrypt"]);
+    const iv = new Uint8Array(await unwrap(b64(rights.iv)));
+    const cipher = await (await fetch(audioUrl)).arrayBuffer();
+    const plain = new Uint8Array(await crypto.subtle.decrypt({ name: "AES-CTR", counter: iv, length: 128 }, ctrKey, cipher));
+    const ext =
+      plain[0] === 0x1a && plain[1] === 0x45 && plain[2] === 0xdf && plain[3] === 0xa3
+        ? "webm"
+        : plain[4] === 0x66 && plain[5] === 0x74 && plain[6] === 0x79 && plain[7] === 0x70
+          ? "m4a"
+          : "bin";
+    const safeTitle = String(clip.title ?? clipId).replace(/[\\/:*?"<>|]/g, "_");
+    return { filename: `${safeTitle} [${clipId.slice(0, 8)}].${ext}`, ext, bytes: plain };
+  }
+
   async extendAudio(audioId: string, opts: { prompt?: string; tags?: string; title?: string; continueAt?: number; model?: string }) {
     const payload: Record<string, unknown> = {
       make_instrumental: false,

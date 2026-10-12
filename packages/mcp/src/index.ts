@@ -93,6 +93,21 @@ server.registerTool(
 );
 
 server.registerTool(
+  "suno_download_song",
+  {
+    description: "音声取得（再生経路・DL数非消費）。out_dirに保存しパスを返す",
+    inputSchema: { clip_id: z.string(), out_dir: z.string().optional() },
+  },
+  async (args) => {
+    const dl = await getClient().downloadClip(args.clip_id);
+    const dir = args.out_dir ?? `${process.env.HOME}/Downloads`;
+    const path = `${dir}/${dl.filename}`;
+    await Bun.write(path, dl.bytes);
+    return { content: [{ type: "text", text: JSON.stringify({ path, bytes: dl.bytes.length }) }] };
+  }
+);
+
+server.registerTool(
   "suno_get_clip",
   { description: "クリップ単体取得", inputSchema: { clip_id: z.string() } },
   async (args) => ({
