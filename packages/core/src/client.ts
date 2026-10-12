@@ -23,7 +23,7 @@ export interface SongInfo {
   created_at: string;
 }
 
-const DEFAULT_MODEL = "chirp-v3-5";
+const DEFAULT_MODEL = "chirp-carp";
 
 export class SunoClient {
   private cookies: Record<string, string>;
@@ -140,6 +140,15 @@ export class SunoClient {
     make_instrumental?: boolean;
     negative_tags?: string;
     model?: string;
+    vocal_gender?: "male" | "female";
+    gen_duration?: number;
+    is_max_mode?: boolean;
+    is_mumble?: boolean;
+    control_sliders?: {
+      weirdness_constraint?: number;
+      style_weight?: number;
+      audio_weight?: number;
+    };
   }) {
     const payload: Record<string, unknown> = {
       make_instrumental: opts.make_instrumental ?? false,
@@ -149,6 +158,11 @@ export class SunoClient {
       tags: opts.tags,
       title: opts.title,
       negative_tags: opts.negative_tags ?? "",
+      ...(opts.vocal_gender ? { vocal_gender: opts.vocal_gender } : {}),
+      ...(typeof opts.gen_duration === "number" ? { gen_duration: opts.gen_duration } : {}),
+      ...(typeof opts.is_max_mode === "boolean" ? { is_max_mode: opts.is_max_mode } : {}),
+      ...(typeof opts.is_mumble === "boolean" ? { is_mumble: opts.is_mumble } : {}),
+      ...(opts.control_sliders ? { control_sliders: opts.control_sliders } : {}),
     };
     const data = await this.api<any>("POST", "/api/generate/v2/", payload);
     return (data.clips as any[]).map((c) => c.id as string);
@@ -242,5 +256,17 @@ export class SunoClient {
 
   async getPlaylist(playlistId: string) {
     return this.api<any>("GET", `/api/playlist/${playlistId}`);
+  }
+
+  async addPlaylistTracks(playlistId: string, clipIds: string[]) {
+    return this.api<any>("POST", `/api/playlist/v2/${playlistId}/tracks/add`, { clip_ids: clipIds });
+  }
+
+  async removePlaylistTracks(playlistId: string, indexes: number[]) {
+    return this.api<any>("POST", "/api/playlist/update_clips/", {
+      playlist_id: playlistId,
+      update_type: "remove",
+      metadata: { indexes },
+    });
   }
 }

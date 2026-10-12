@@ -94,6 +94,47 @@ Bun.serve({
         const body = (await req.json()) as any;
         return json({ text: await getClient().generateLyrics(body.prompt) });
       }
+      if (url.pathname === "/v1/clips" && req.method === "GET") {
+        const id = url.searchParams.get("id");
+        if (!id) return json({ error: "id required" }, 400);
+        return json(await getClient().clip(id));
+      }
+      if (url.pathname === "/v1/extend" && req.method === "POST") {
+        const body = (await req.json()) as any;
+        if (!body.audio_id) return json({ error: "audio_id required" }, 400);
+        const ids = await getClient().extendAudio(body.audio_id, body);
+        return json({ ids }, 202);
+      }
+      if (url.pathname === "/v1/concat" && req.method === "POST") {
+        const body = (await req.json()) as any;
+        if (!body.clip_id) return json({ error: "clip_id required" }, 400);
+        return json(await getClient().concatenate(body.clip_id));
+      }
+      if (url.pathname === "/v1/stems" && req.method === "POST") {
+        const body = (await req.json()) as any;
+        if (!body.song_id) return json({ error: "song_id required" }, 400);
+        return json(await getClient().generateStems(body.song_id));
+      }
+      if (url.pathname === "/v1/playlists" && req.method === "POST") {
+        const body = (await req.json()) as any;
+        return json(await getClient().createPlaylist(body.name ?? "新規プレイリスト"));
+      }
+      const plMatch = url.pathname.match(/^\/v1\/playlists\/([^/]+)$/);
+      if (plMatch && req.method === "GET") {
+        return json(await getClient().getPlaylist(plMatch[1]));
+      }
+      const plAddMatch = url.pathname.match(/^\/v1\/playlists\/([^/]+)\/tracks$/);
+      if (plAddMatch && req.method === "POST") {
+        const body = (await req.json()) as any;
+        if (!Array.isArray(body.clip_ids)) return json({ error: "clip_ids required" }, 400);
+        return json(await getClient().addPlaylistTracks(plAddMatch[1], body.clip_ids));
+      }
+      const plDelMatch = url.pathname.match(/^\/v1\/playlists\/([^/]+)\/tracks\/remove$/);
+      if (plDelMatch && req.method === "POST") {
+        const body = (await req.json()) as any;
+        if (!Array.isArray(body.indexes)) return json({ error: "indexes required" }, 400);
+        return json(await getClient().removePlaylistTracks(plDelMatch[1], body.indexes));
+      }
       const audioMatch = url.pathname.match(/^\/v1\/songs\/([^/]+)\/audio$/);
       if (audioMatch && req.method === "GET") {
         const songs = await getClient().feed([audioMatch[1]]);

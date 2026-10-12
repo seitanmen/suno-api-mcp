@@ -29,6 +29,17 @@ server.registerTool(
       tags: z.string(),
       title: z.string(),
       make_instrumental: z.boolean().optional(),
+      negative_tags: z.string().optional(),
+      model: z.string().optional(),
+      vocal_gender: z.enum(["male", "female"]).optional(),
+      gen_duration: z.number().optional(),
+      is_max_mode: z.boolean().optional(),
+      is_mumble: z.boolean().optional(),
+      control_sliders: z.object({
+        weirdness_constraint: z.number().min(0).max(100).optional(),
+        style_weight: z.number().min(0).max(100).optional(),
+        audio_weight: z.number().min(0).max(100).optional(),
+      }).optional(),
     },
   },
   async (args) => {
@@ -78,6 +89,87 @@ server.registerTool(
   { description: "歌詞生成", inputSchema: { prompt: z.string() } },
   async (args) => ({
     content: [{ type: "text", text: await getClient().generateLyrics(args.prompt) }],
+  })
+);
+
+server.registerTool(
+  "suno_get_clip",
+  { description: "クリップ単体取得", inputSchema: { clip_id: z.string() } },
+  async (args) => ({
+    content: [{ type: "text", text: JSON.stringify(await getClient().clip(args.clip_id)) }],
+  })
+);
+
+server.registerTool(
+  "suno_extend_song",
+  {
+    description: "延長生成",
+    inputSchema: {
+      audio_id: z.string(),
+      prompt: z.string().optional(),
+      tags: z.string().optional(),
+      title: z.string().optional(),
+      continue_at: z.number().optional(),
+      model: z.string().optional(),
+    },
+  },
+  async (args) => {
+    const ids = await getClient().extendAudio(args.audio_id, args as any);
+    return { content: [{ type: "text", text: JSON.stringify({ ids }) }] };
+  }
+);
+
+server.registerTool(
+  "suno_concat_clips",
+  { description: "結合", inputSchema: { clip_id: z.string() } },
+  async (args) => ({
+    content: [{ type: "text", text: JSON.stringify(await getClient().concatenate(args.clip_id)) }],
+  })
+);
+
+server.registerTool(
+  "suno_generate_stems",
+  { description: "ステム分離", inputSchema: { song_id: z.string() } },
+  async (args) => ({
+    content: [{ type: "text", text: JSON.stringify(await getClient().generateStems(args.song_id)) }],
+  })
+);
+
+server.registerTool(
+  "suno_create_playlist",
+  { description: "プレイリスト作成", inputSchema: { name: z.string() } },
+  async (args) => ({
+    content: [{ type: "text", text: JSON.stringify(await getClient().createPlaylist(args.name)) }],
+  })
+);
+
+server.registerTool(
+  "suno_get_playlist",
+  { description: "プレイリスト取得", inputSchema: { playlist_id: z.string() } },
+  async (args) => ({
+    content: [{ type: "text", text: JSON.stringify(await getClient().getPlaylist(args.playlist_id)) }],
+  })
+);
+
+server.registerTool(
+  "suno_add_playlist_tracks",
+  {
+    description: "プレイリストへ曲追加",
+    inputSchema: { playlist_id: z.string(), clip_ids: z.array(z.string()) },
+  },
+  async (args) => ({
+    content: [{ type: "text", text: JSON.stringify(await getClient().addPlaylistTracks(args.playlist_id, args.clip_ids)) }],
+  })
+);
+
+server.registerTool(
+  "suno_remove_playlist_tracks",
+  {
+    description: "プレイリストから曲削除（indexes指定）",
+    inputSchema: { playlist_id: z.string(), indexes: z.array(z.number()) },
+  },
+  async (args) => ({
+    content: [{ type: "text", text: JSON.stringify(await getClient().removePlaylistTracks(args.playlist_id, args.indexes)) }],
   })
 );
 
