@@ -40,6 +40,9 @@ server.registerTool(
         style_weight: z.number().min(0).max(100).optional(),
         audio_weight: z.number().min(0).max(100).optional(),
       }).optional(),
+      use_personalization: z.boolean().optional(),
+      personalization_user_uuid: z.string().optional(),
+      do_personalize_lyrics: z.boolean().optional(),
     },
   },
   async (args) => {

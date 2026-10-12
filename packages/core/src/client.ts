@@ -151,6 +151,9 @@ export class SunoClient {
       style_weight?: number;
       audio_weight?: number;
     };
+    use_personalization?: boolean;
+    personalization_user_uuid?: string;
+    do_personalize_lyrics?: boolean;
   }) {
     const payload: Record<string, unknown> = {
       make_instrumental: opts.make_instrumental ?? false,
@@ -165,6 +168,9 @@ export class SunoClient {
       ...(typeof opts.is_max_mode === "boolean" ? { is_max_mode: opts.is_max_mode } : {}),
       ...(typeof opts.is_mumble === "boolean" ? { is_mumble: opts.is_mumble } : {}),
       ...(opts.control_sliders ? { control_sliders: opts.control_sliders } : {}),
+      ...(opts.use_personalization ? { use_personalization: true } : {}),
+      ...(opts.personalization_user_uuid ? { personalization_user_uuid: opts.personalization_user_uuid } : {}),
+      ...(typeof opts.do_personalize_lyrics === "boolean" ? { do_personalize_lyrics: opts.do_personalize_lyrics } : {}),
     };
     const data = await this.api<any>("POST", "/api/generate/v2/", payload);
     return (data.clips as any[]).map((c) => c.id as string);
@@ -295,8 +301,9 @@ export class SunoClient {
     return (data.clips as any[]).map((c) => c.id as string);
   }
 
+  /** Concat requires a clip with metadata.history (e.g. an extended clip). Plain clips -> 400 "Bad history". */
   async concatenate(clipId: string) {
-    return this.api("POST", "/api/generate/concat/v2/", { clip_id: clipId });
+    return this.api("POST", "/api/generate/concat/v2/", { clip_id: clipId, is_infill: false });
   }
 
   async generateStems(songId: string) {
