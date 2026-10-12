@@ -19,6 +19,7 @@ function json(data: unknown, status = 200): Response {
 
 const probes = new Map<string, any>();
 const probeResults = new Map<string, any>();
+const apiLog: string[] = [];
 
 Bun.serve({
   port: PORT,
@@ -72,6 +73,17 @@ Bun.serve({
         if (body.cookies) saveCookies({ ...loadCookies(), ...body.cookies });
         if (body.session_id) getClient().setSession(body.session_id);
         return json({ ok: true });
+      }
+      if (url.pathname === "/v1/apilog" && req.method === "POST") {
+        const body = (await req.json()) as any;
+        if (typeof body.line === "string") {
+          apiLog.push(body.line.slice(0, 3000));
+          while (apiLog.length > 200) apiLog.shift();
+        }
+        return json({ ok: true });
+      }
+      if (url.pathname === "/v1/apilog" && req.method === "GET") {
+        return json({ lines: apiLog });
       }
       if (url.pathname === "/v1/credits" && req.method === "GET") {
         return json(await getClient().credits());

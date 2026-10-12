@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Suno Bridge (self-host api)
 // @namespace    suno-selfhost
-// @version      0.7.3
+// @version      0.7.4
 // @updateURL     https://raw.githubusercontent.com/seitanmen/suno-api-mcp/main/packages/userscript/suno-bridge.user.js
 // @downloadURL   https://raw.githubusercontent.com/seitanmen/suno-api-mcp/main/packages/userscript/suno-bridge.user.js
 // @description  Sunoのセッション（JWT/Cookie）をローカルAPIに中継する
@@ -27,7 +27,7 @@
     const emitApi = (detail) => {
       window.dispatchEvent(new CustomEvent("suno-bridge-api", { detail: detail }));
     };
-    const interesting = (u) => /update_clips|generate\/v2|concat|playlist|generate\/lyrics|stems/.test(u || "");
+    const interesting = (u) => /update_clips|generate\/v2|v2-web|agentic|concat|playlist|generate\/lyrics|stems|personalization|speech|sound/i.test(u || "");
     const origFetch = window.fetch;
     window.fetch = function (input, init) {
       let u, m;
@@ -282,6 +282,16 @@
         while (apiLog.length > 50) apiLog.shift();
         const pre = document.getElementById("suno-bridge-apilog");
         if (pre) pre.textContent = apiLog.join("\n");
+        if (/\|\|\|/.test(line)) {
+          try {
+            GM_xmlhttpRequest({
+              method: "POST",
+              url: "http://localhost:4123/v1/apilog",
+              headers: { "Content-Type": "application/json" },
+              data: JSON.stringify({ line: line }),
+            });
+          } catch (_) {}
+        }
       }
     } catch (_) {}
   }
