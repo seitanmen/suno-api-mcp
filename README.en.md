@@ -32,13 +32,18 @@ A self-hosted API + MCP bridge running on your own Suno account. Unofficial, for
 | Raw audio (playback path, download quota untouched) | `GET /v1/download?id=...` | ✅ |
 | Speech synthesis | `POST /v1/speech {prompt, backing_music?, vocal_gender?}` | ✅ |
 | Sound effects | `POST /v1/sounds {prompt}` | ✅ |
+| Model list (dynamic) | `GET /v1/models` | ✅ |
+| Image upload | `POST /v1/uploads/image {data_base64, content_type?}` | ⚠️ unverified live |
+| Audio upload | `POST /v1/uploads/audio {data_base64, filename, upload_type?}` | ⚠️ unverified live |
+| Voice (persona) create/get | `POST /v1/persona` / `GET /v1/persona?id=...` | ⚠️ unverified live |
+| References (audio_refs/cover/sample/mashup) | extra `POST /v1/songs` fields | ⚠️ unverified live |
 | Standalone personalize API | — (covered as `use_personalization` generate option) | ⚠️ |
 
 Default model: `chirp-hawk` (verified on the v6 family).
 
-## MCP tools (18)
+## MCP tools (22)
 
-`suno_get_credits` / `suno_generate_song` (advanced options) / `suno_generate_from_description` / `suno_check_status` / `suno_wait_for_songs` / `suno_get_recent` / `suno_generate_lyrics` / `suno_get_clip` / `suno_download_song` / `suno_extend_song` / `suno_concat_clips` / `suno_generate_stems` / `suno_create_playlist` / `suno_get_playlist` / `suno_add_playlist_tracks` / `suno_remove_playlist_tracks` / `suno_generate_speech` / `suno_generate_sound`
+`suno_get_credits` / `suno_generate_song` (refs + model) / `suno_generate_from_description` / `suno_check_status` / `suno_wait_for_songs` / `suno_get_recent` / `suno_generate_lyrics` / `suno_get_clip` / `suno_download_song` / `suno_extend_song` / `suno_concat_clips` / `suno_generate_stems` / `suno_create_playlist` / `suno_get_playlist` / `suno_add_playlist_tracks` / `suno_remove_playlist_tracks` / `suno_generate_speech` / `suno_generate_sound` / `suno_get_models` / `suno_upload_image` / `suno_upload_audio` / `suno_create_persona`
 
 Register with Claude Code:
 

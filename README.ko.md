@@ -32,13 +32,18 @@
 | 오디오 취득(재생 경로・다운로드 수 미소비) | `GET /v1/download?id=...` | ✅ |
 | 스피치 생성 | `POST /v1/speech {prompt, backing_music?, vocal_gender?}` | ✅ |
 | 효과음 생성 | `POST /v1/sounds {prompt}` | ✅ |
+| 모델 목록(동적 조회) | `GET /v1/models` | ✅ |
+| 이미지 업로드 | `POST /v1/uploads/image {data_base64, content_type?}` | ⚠️ 실측정 미확인 |
+| 오디오 업로드 | `POST /v1/uploads/audio {data_base64, filename, upload_type?}` | ⚠️ 실측정 미확인 |
+| 보이스(persona) 생성/조회 | `POST /v1/persona` / `GET /v1/persona?id=...` | ⚠️ 실측정 미확인 |
+| 참조(audio_refs/cover/sample/mashup) | `POST /v1/songs` 추가 필드 | ⚠️ 실측정 미확인 |
 | 개인화 단독 API | — (생성 옵션 `use_personalization`으로 대응) | ⚠️ |
 
 기본 모델: `chirp-hawk`(v6 계열에서 동작 확인).
 
-## MCP 도구 (18개)
+## MCP 도구 (22개)
 
-`suno_get_credits` / `suno_generate_song`(고급 옵션) / `suno_generate_from_description` / `suno_check_status` / `suno_wait_for_songs` / `suno_get_recent` / `suno_generate_lyrics` / `suno_get_clip` / `suno_download_song` / `suno_extend_song` / `suno_concat_clips` / `suno_generate_stems` / `suno_create_playlist` / `suno_get_playlist` / `suno_add_playlist_tracks` / `suno_remove_playlist_tracks` / `suno_generate_speech` / `suno_generate_sound`
+`suno_get_credits` / `suno_generate_song`(참조+모델) / `suno_generate_from_description` / `suno_check_status` / `suno_wait_for_songs` / `suno_get_recent` / `suno_generate_lyrics` / `suno_get_clip` / `suno_download_song` / `suno_extend_song` / `suno_concat_clips` / `suno_generate_stems` / `suno_create_playlist` / `suno_get_playlist` / `suno_add_playlist_tracks` / `suno_remove_playlist_tracks` / `suno_generate_speech` / `suno_generate_sound` / `suno_get_models` / `suno_upload_image` / `suno_upload_audio` / `suno_create_persona`
 
 Claude Code 등록 예:
 

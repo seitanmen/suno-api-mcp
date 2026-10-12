@@ -121,6 +121,30 @@ Bun.serve({
         if (!id) return json({ error: "id required" }, 400);
         return json(await getClient().clip(id));
       }
+      if (url.pathname === "/v1/models" && req.method === "GET") {
+        return json({ models: await getClient().getModels() });
+      }
+      if (url.pathname === "/v1/uploads/image" && req.method === "POST") {
+        const body = (await req.json()) as any;
+        if (!body.data_base64) return json({ error: "data_base64 required" }, 400);
+        const bin = Uint8Array.from(atob(body.data_base64), (ch) => ch.charCodeAt(0));
+        return json(await getClient().uploadImage(bin, body.content_type ?? "image/png"));
+      }
+      if (url.pathname === "/v1/uploads/audio" && req.method === "POST") {
+        const body = (await req.json()) as any;
+        if (!body.data_base64 || !body.filename) return json({ error: "data_base64 and filename required" }, 400);
+        const bin = Uint8Array.from(atob(body.data_base64), (ch) => ch.charCodeAt(0));
+        return json(await getClient().uploadAudio(bin, body.filename, body), 202);
+      }
+      if (url.pathname === "/v1/persona" && req.method === "POST") {
+        const body = (await req.json()) as any;
+        return json(await getClient().createPersona(body), 202);
+      }
+      if (url.pathname === "/v1/persona" && req.method === "GET") {
+        const id = url.searchParams.get("id");
+        if (!id) return json({ error: "id required" }, 400);
+        return json(await getClient().getPersona(id));
+      }
       if (url.pathname === "/v1/download" && req.method === "GET") {
         const id = url.searchParams.get("id");
         if (!id) return json({ error: "id required" }, 400);

@@ -43,6 +43,21 @@ server.registerTool(
       use_personalization: z.boolean().optional(),
       personalization_user_uuid: z.string().optional(),
       do_personalize_lyrics: z.boolean().optional(),
+      audio_refs: z.array(z.object({
+        clip_id: z.string(),
+        style_prompt: z.string().optional(),
+        lyrics: z.string().optional(),
+        duration_s: z.number().optional(),
+      })).optional(),
+      sample_clip_ids: z.array(z.string()).optional(),
+      chop_sample_clip_id: z.string().optional(),
+      cover_clip_id: z.string().optional(),
+      mashup_clip_ids: z.array(z.string()).optional(),
+      continue_clip_id: z.string().optional(),
+      continue_at: z.number().optional(),
+      underpainting_clip_id: z.string().optional(),
+      overpainting_clip_id: z.string().optional(),
+      user_uploaded_image_ids: z.array(z.string()).optional(),
     },
   },
   async (args) => {
@@ -212,6 +227,51 @@ server.registerTool(
   },
   async (args) => ({
     content: [{ type: "text", text: JSON.stringify(await getClient().removePlaylistTracks(args.playlist_id, args.indexes)) }],
+  })
+);
+
+server.registerTool(
+  "suno_get_models",
+  { description: "利用可能モデル一覧（billingから動的取得。verifiedは動作確認済み）", inputSchema: {} },
+  async () => ({
+    content: [{ type: "text", text: JSON.stringify({ models: await getClient().getModels() }) }],
+  })
+);
+
+server.registerTool(
+  "suno_upload_image",
+  {
+    description: "画像アップロード（生成時のuser_uploaded_image_ids用asset idを返す。data_base64で画像を渡す）",
+    inputSchema: { data_base64: z.string(), content_type: z.string().optional() },
+  },
+  async (args) => {
+    const bin = Uint8Array.from(atob(args.data_base64), (ch) => ch.charCodeAt(0));
+    return {
+      content: [{ type: "text", text: JSON.stringify(await getClient().uploadImage(bin, args.content_type ?? "image/png")) }],
+    };
+  }
+);
+
+server.registerTool(
+  "suno_upload_audio",
+  {
+    description: "オーディオアップロード（data_base64+filename→clip_idを返す。参照・カバー・サンプルの元に使う）",
+    inputSchema: { data_base64: z.string(), filename: z.string(), upload_type: z.string().optional() },
+  },
+  async (args) => ({
+    content: [{ type: "text", text: JSON.stringify(await getClient().uploadAudio(
+      Uint8Array.from(atob(args.data_base64), (ch) => ch.charCodeAt(0)), args.filename, args)) }],
+  })
+);
+
+server.registerTool(
+  "suno_create_persona",
+  {
+    description: "ボイス（persona）作成。vox_audio_id等を指定",
+    inputSchema: { name: z.string(), vox_audio_id: z.string().optional() },
+  },
+  async (args) => ({
+    content: [{ type: "text", text: JSON.stringify(await getClient().createPersona(args as any)) }],
   })
 );
 

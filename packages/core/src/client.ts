@@ -154,6 +154,23 @@ export class SunoClient {
     use_personalization?: boolean;
     personalization_user_uuid?: string;
     do_personalize_lyrics?: boolean;
+    /** References (clip ids from library) */
+    audio_refs?: { clip_id: string; style_prompt?: string; lyrics?: string; duration_s?: number }[];
+    sample_clip_ids?: string[];
+    sample_clip_starts?: (number | null)[];
+    sample_clip_ends?: (number | null)[];
+    chop_sample_clip_id?: string;
+    chop_sample_start_s?: number | null;
+    chop_sample_end_s?: number | null;
+    cover_clip_id?: string;
+    cover_start_s?: number;
+    cover_end_s?: number;
+    mashup_clip_ids?: string[];
+    continue_clip_id?: string;
+    continue_at?: number;
+    underpainting_clip_id?: string;
+    overpainting_clip_id?: string;
+    user_uploaded_image_ids?: string[];
   }) {
     const payload: Record<string, unknown> = {
       make_instrumental: opts.make_instrumental ?? false,
@@ -171,6 +188,19 @@ export class SunoClient {
       ...(opts.use_personalization ? { use_personalization: true } : {}),
       ...(opts.personalization_user_uuid ? { personalization_user_uuid: opts.personalization_user_uuid } : {}),
       ...(typeof opts.do_personalize_lyrics === "boolean" ? { do_personalize_lyrics: opts.do_personalize_lyrics } : {}),
+      ...(opts.audio_refs?.length ? { audio_refs: opts.audio_refs } : {}),
+      ...(opts.sample_clip_ids?.length ? { sample_clip_ids: opts.sample_clip_ids } : {}),
+      ...(opts.sample_clip_starts ? { sample_clip_starts: opts.sample_clip_starts } : {}),
+      ...(opts.sample_clip_ends ? { sample_clip_ends: opts.sample_clip_ends } : {}),
+      ...(opts.chop_sample_clip_id ? { chop_sample_clip_id: opts.chop_sample_clip_id } : {}),
+      ...(opts.chop_sample_start_s !== undefined ? { chop_sample_start_s: opts.chop_sample_start_s } : {}),
+      ...(opts.chop_sample_end_s !== undefined ? { chop_sample_end_s: opts.chop_sample_end_s } : {}),
+      ...(opts.cover_clip_id ? { cover_clip_id: opts.cover_clip_id, cover_start_s: opts.cover_start_s ?? 0, cover_end_s: opts.cover_end_s ?? null } : {}),
+      ...(opts.mashup_clip_ids?.length ? { mashup_clip_ids: opts.mashup_clip_ids } : {}),
+      ...(opts.continue_clip_id ? { continue_clip_id: opts.continue_clip_id, continue_at: opts.continue_at ?? 0 } : {}),
+      ...(opts.underpainting_clip_id ? { underpainting_clip_id: opts.underpainting_clip_id } : {}),
+      ...(opts.overpainting_clip_id ? { overpainting_clip_id: opts.overpainting_clip_id } : {}),
+      ...(opts.user_uploaded_image_ids?.length ? { user_uploaded_image_ids: opts.user_uploaded_image_ids } : {}),
     };
     const data = await this.api<any>("POST", "/api/generate/v2/", payload);
     return (data.clips as any[]).map((c) => c.id as string);
@@ -203,6 +233,105 @@ export class SunoClient {
   async generateSound(prompt: string) {
     const data = await this.api<any>("POST", "/api/generate/v2-web/", { prompt, task: "sound" });
     return (data.clips as any[]).map((c) => c.id as string);
+  }
+
+  /** Known model versions (offline fallback). Live list via getModels(). */
+  static MODELS = [
+    { id: "chirp-hawk", label: "v6 song (default)", verified: true },
+    { id: "chirp-hawk-wild", label: "v6 wild", verified: false },
+    { id: "chirp-v4-5-plus", label: "v4.5+", verified: false },
+    { id: "chirp-v4-5", label: "v4.5", verified: false },
+    { id: "chirp-v4", label: "v4", verified: false },
+    { id: "chirp-v3-5", label: "v3.5 legacy", verified: false },
+    { id: "chirp-goose", label: "v6-mini (speech)", verified: true },
+    { id: "chirp-sfx", label: "sounds", verified: true },
+  ];
+
+  /**
+   * Live model list from billing info (reflects additions/updates automatically).
+   * Falls back to static MODELS when unreachable.
+   */
+  async getModels() {
+    try {
+      const info = await this.api<any>("GET", "/api/billing/info");
+      const live = (info.models as any[])?.map((m) => ({
+        id: m.external_key as string,
+        label: m.name as string,
+        description: m.description as string ?? "",
+        default: !!m.is_default_model,
+        can_use: !!m.can_use,
+        major_version: m.major_version,
+        features: m.features ?? [],
+        verified: ["chirp-hawk", "chirp-goose", "chirp-sfx"].includes(m.external_key),
+      }));
+      if (live?.length) return live;
+    } catch { /* offline fallback */ }
+    return SunoClient.MODELS;
+  }
+
+  /** S3 presigned-POST helper shared by uploads. */
+  private async s3Post(url: string, fields: Record<string, string>, data: Uint8Array, contentType: string, filename: string) {
+    const form = new FormData();
+    for (const [k, v] of Object.entries(fields)) form.append(k, v);
+    form.append("file", new Blob([new Uint8Array(data)], { type: contentType }), filename);
+    const put = await fetch(url, { method: "POST", body: form });
+    if (!put.ok) throw new Error(`S3 upload: HTTP ${put.status}`);
+  }
+
+  /** Image upload: presigned S3 -> complete -> asset. Returns asset id for user_uploaded_image_ids. */
+  async uploadImage(data: Uint8Array, contentType: string) {
+    const init = await this.api<any>("POST", "/api/visual/assets/uploads", {
+      contentType,
+      bytes: data.length,
+    });
+    const { asset, upload } = init as { asset: any; upload: { url: string; fields: Record<string, string> } };
+    await this.s3Post(upload.url, upload.fields, data, contentType, "upload");
+    await this.api("POST", `/api/visual/assets/uploads/${asset.id}/complete`, {});
+    for (let i = 0; i < 20; i++) {
+      await new Promise((r) => setTimeout(r, 3000));
+      const cur = await this.api<any>("GET", `/api/visual/assets/${asset.id}`);
+      const st = cur.asset?.status ?? cur.status;
+      if (st === "ready" || st === "complete") return { id: asset.id };
+      if (st === "failed") throw new Error(`image asset failed: ${cur.asset?.errorCode ?? cur.errorCode ?? "unknown"}`);
+    }
+    throw new Error("image asset timeout");
+  }
+
+  /**
+   * Audio upload: initiate -> S3 -> poll status -> finish -> initialize-clip.
+   * Returns { upload_id, clip_id, title, has_vocal }.
+   */
+  async uploadAudio(data: Uint8Array, filename: string, opts?: { upload_type?: string; is_stem_mix?: boolean; contentType?: string }) {
+    const ext = (filename.split(".").pop() ?? "mp3").toLowerCase();
+    const init = await this.api<any>("POST", "/api/uploads/audio/", {
+      extension: ext,
+      is_stem_mix: opts?.is_stem_mix ?? false,
+      ...(opts?.upload_type ? { upload_type: opts.upload_type } : {}),
+    });
+    const uploadId = init.id as string;
+    await this.s3Post(init.url, init.fields, data, opts?.contentType ?? "audio/mpeg", filename);
+    let status: any = null;
+    for (let i = 0; i < 60; i++) {
+      await new Promise((r) => setTimeout(r, 5000));
+      status = await this.api<any>("GET", `/api/uploads/audio/${uploadId}/`);
+      if (status?.status === "complete") break;
+      if (status?.error_type || status?.status === "failed") {
+        throw new Error(`audio processing failed: ${status?.error_type ?? "unknown"}`);
+      }
+    }
+    if (status?.status !== "complete") throw new Error("audio processing timeout");
+    await this.api("POST", `/api/uploads/audio/${uploadId}/upload-finish/`, {});
+    const clip = await this.api<any>("POST", `/api/uploads/audio/${uploadId}/initialize-clip/`, {});
+    return { upload_id: uploadId, clip_id: clip.clip_id as string, title: status.title, has_vocal: status.has_vocal };
+  }
+
+  /** Persona (voice) create passthrough. vox_audio_id typically comes from an uploaded/voice clip. */
+  async createPersona(params: Record<string, unknown>) {
+    return this.api<any>("POST", "/api/persona/create/", params);
+  }
+
+  async getPersona(persona_id: string) {
+    return this.api<any>("GET", `/api/persona/get-persona/${persona_id}/`);
   }
 
   async feed(ids?: string[]): Promise<SongInfo[]> {
