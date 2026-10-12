@@ -23,7 +23,8 @@ export interface SongInfo {
   created_at: string;
 }
 
-const DEFAULT_MODEL = "chirp-carp";
+// chirp-carp routes to chirp-halibut which currently fails renders; hawk verified working.
+const DEFAULT_MODEL = "chirp-hawk";
 
 export class SunoClient {
   private cookies: Record<string, string>;
