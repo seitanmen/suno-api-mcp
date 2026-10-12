@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Suno Bridge (self-host api)
 // @namespace    suno-selfhost
-// @version      0.4.4
+// @version      0.4.5
 // @updateURL     https://raw.githubusercontent.com/seitanmen/suno-api-mcp/main/packages/userscript/suno-bridge.user.js
 // @downloadURL   https://raw.githubusercontent.com/seitanmen/suno-api-mcp/main/packages/userscript/suno-bridge.user.js
 // @description  Sunoのセッション（JWT/Cookie）をローカルAPIに中継する
@@ -134,14 +134,14 @@
   function logApi(method, url, body) {
     try {
       const u = new URL(url, location.href);
-      if (!/suno\.com$|suno\.com/.test(u.hostname)) return;
-      if (!u.pathname.startsWith("/api/")) return;
-      let line = method + " " + u.pathname;
-      if (u.pathname.includes("update_clips") && u.search) line += u.search;
+      if (!/suno\.com/.test(u.hostname)) return;
+      const isMutation = /^(POST|PUT|PATCH|DELETE|BEACON)$/.test(method);
+      if (!u.pathname.startsWith("/api/") && !isMutation) return;
+      let line = method + " " + u.pathname + u.search;
       if (body) line += " ||| " + body;
       if (apiLog[apiLog.length - 1] !== line) {
         apiLog.push(line);
-        if (apiLog.length > 15) apiLog.shift();
+        while (apiLog.length > 50) apiLog.shift();
         const pre = document.getElementById("suno-bridge-apilog");
         if (pre) pre.textContent = apiLog.join("\n");
       }
@@ -177,7 +177,7 @@
     }
     const jwtShort = state.jwt ? state.jwt.slice(0, 10) + "..." : "未取得";
     el.innerHTML =
-      "<b>Suno Bridge v0.4.4</b><br>JWT: " + jwtShort +
+      "<b>Suno Bridge v0.4.5</b><br>JWT: " + jwtShort +
       "<br>送信: " + (state.sent ? new Date(state.sent).toLocaleTimeString() : "—") +
       (state.error ? "<br><span style='color:#f88'>" + state.error + "</span>" : "") +
       "<br><button id='suno-bridge-copy'>コピー</button> " +
