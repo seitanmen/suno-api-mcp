@@ -6,8 +6,9 @@
 
 ## 설치 (3단계)
 
-1. API 실행
+1. 저장소를 클론하고 API 실행
    ```sh
+   git clone https://github.com/seitanmen/suno-api-mcp && cd suno-api-mcp
    bun install && bun run api   # :4123
    ```
 2. Tampermonkey(Chrome 확장)를 설치하고 아래 링크를 열어 설치
@@ -41,14 +42,14 @@
 
 기본 모델: `chirp-hawk`(v6 계열에서 동작 확인).
 
-## MCP 도구 (22개)
+## MCP 도구 (24개)
 
-`suno_get_credits` / `suno_generate_song`(참조+모델) / `suno_generate_from_description` / `suno_check_status` / `suno_wait_for_songs` / `suno_get_recent` / `suno_generate_lyrics` / `suno_get_clip` / `suno_download_song` / `suno_extend_song` / `suno_concat_clips` / `suno_generate_stems` / `suno_create_playlist` / `suno_get_playlist` / `suno_add_playlist_tracks` / `suno_remove_playlist_tracks` / `suno_generate_speech` / `suno_generate_sound` / `suno_get_models` / `suno_upload_image` / `suno_upload_audio` / `suno_create_persona`
+`suno_get_credits` / `suno_generate_song`(참조+모델) / `suno_generate_from_description` / `suno_check_status` / `suno_wait_for_songs` / `suno_get_recent` / `suno_generate_lyrics` / `suno_get_clip` / `suno_download_song` / `suno_extend_song` / `suno_concat_clips` / `suno_generate_stems` / `suno_create_playlist` / `suno_get_playlist` / `suno_add_playlist_tracks` / `suno_remove_playlist_tracks` / `suno_generate_speech` / `suno_generate_sound` / `suno_get_models` / `suno_upload_image` / `suno_upload_audio` / `suno_create_persona` / `suno_check_upload` / `suno_get_persona`
 
-Claude Code 등록 예:
+Claude Code 등록 예（저장소 루트에서）:
 
 ```sh
-claude mcp add suno -- bun run /path/to/suno-api/packages/mcp/src/index.ts
+claude mcp add suno-api-mcp -- bun run ./packages/mcp/src/index.ts
 ```
 
 ## 부록: 쿠키 직접 붙여넣기 (브리지 사용 불가 시에만)

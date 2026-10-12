@@ -6,8 +6,9 @@
 
 ## 安装（3 步）
 
-1. 启动 API
+1. 克隆仓库并启动 API
    ```sh
+   git clone https://github.com/seitanmen/suno-api-mcp && cd suno-api-mcp
    bun install && bun run api   # :4123
    ```
 2. 安装 Tampermonkey（Chrome 扩展），打开以下链接并安装
@@ -41,14 +42,14 @@
 
 默认模型：`chirp-hawk`（v6 系列已验证）。
 
-## MCP 工具（22 个）
+## MCP 工具（24 个）
 
-`suno_get_credits` / `suno_generate_song`（引用+模型） / `suno_generate_from_description` / `suno_check_status` / `suno_wait_for_songs` / `suno_get_recent` / `suno_generate_lyrics` / `suno_get_clip` / `suno_download_song` / `suno_extend_song` / `suno_concat_clips` / `suno_generate_stems` / `suno_create_playlist` / `suno_get_playlist` / `suno_add_playlist_tracks` / `suno_remove_playlist_tracks` / `suno_generate_speech` / `suno_generate_sound` / `suno_get_models` / `suno_upload_image` / `suno_upload_audio` / `suno_create_persona`
+`suno_get_credits` / `suno_generate_song`（引用+模型） / `suno_generate_from_description` / `suno_check_status` / `suno_wait_for_songs` / `suno_get_recent` / `suno_generate_lyrics` / `suno_get_clip` / `suno_download_song` / `suno_extend_song` / `suno_concat_clips` / `suno_generate_stems` / `suno_create_playlist` / `suno_get_playlist` / `suno_add_playlist_tracks` / `suno_remove_playlist_tracks` / `suno_generate_speech` / `suno_generate_sound` / `suno_get_models` / `suno_upload_image` / `suno_upload_audio` / `suno_create_persona` / `suno_check_upload` / `suno_get_persona`
 
-注册到 Claude Code：
+注册到 Claude Code（在仓库根目录）：
 
 ```sh
-claude mcp add suno -- bun run /path/to/suno-api/packages/mcp/src/index.ts
+claude mcp add suno-api-mcp -- bun run ./packages/mcp/src/index.ts
 ```
 
 ## 附录：手动粘贴 Cookie（仅在桥不可用时）

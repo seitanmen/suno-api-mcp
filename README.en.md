@@ -6,8 +6,9 @@ A self-hosted API + MCP bridge running on your own Suno account. Unofficial, for
 
 ## Setup (3 steps)
 
-1. Start the API
+1. Clone the repo and start the API
    ```sh
+   git clone https://github.com/seitanmen/suno-api-mcp && cd suno-api-mcp
    bun install && bun run api   # :4123
    ```
 2. Install Tampermonkey (Chrome extension), then open the link below and install
@@ -41,14 +42,14 @@ A self-hosted API + MCP bridge running on your own Suno account. Unofficial, for
 
 Default model: `chirp-hawk` (verified on the v6 family).
 
-## MCP tools (22)
+## MCP tools (24)
 
-`suno_get_credits` / `suno_generate_song` (refs + model) / `suno_generate_from_description` / `suno_check_status` / `suno_wait_for_songs` / `suno_get_recent` / `suno_generate_lyrics` / `suno_get_clip` / `suno_download_song` / `suno_extend_song` / `suno_concat_clips` / `suno_generate_stems` / `suno_create_playlist` / `suno_get_playlist` / `suno_add_playlist_tracks` / `suno_remove_playlist_tracks` / `suno_generate_speech` / `suno_generate_sound` / `suno_get_models` / `suno_upload_image` / `suno_upload_audio` / `suno_create_persona`
+`suno_get_credits` / `suno_generate_song` (refs + model) / `suno_generate_from_description` / `suno_check_status` / `suno_wait_for_songs` / `suno_get_recent` / `suno_generate_lyrics` / `suno_get_clip` / `suno_download_song` / `suno_extend_song` / `suno_concat_clips` / `suno_generate_stems` / `suno_create_playlist` / `suno_get_playlist` / `suno_add_playlist_tracks` / `suno_remove_playlist_tracks` / `suno_generate_speech` / `suno_generate_sound` / `suno_get_models` / `suno_upload_image` / `suno_upload_audio` / `suno_create_persona` / `suno_check_upload` / `suno_get_persona`
 
-Register with Claude Code:
+Register with Claude Code (from the repo root):
 
 ```sh
-claude mcp add suno -- bun run /path/to/suno-api/packages/mcp/src/index.ts
+claude mcp add suno-api-mcp -- bun run ./packages/mcp/src/index.ts
 ```
 
 ## Appendix: manual cookie paste (only if the bridge is unavailable)

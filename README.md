@@ -6,8 +6,9 @@
 
 ## 導入（3ステップ）
 
-1. APIを起動する
+1. リポジトリを取得してAPIを起動する
    ```sh
+   git clone https://github.com/seitanmen/suno-api-mcp && cd suno-api-mcp
    bun install && bun run api   # :4123
    ```
 2. Tampermonkey（Chrome拡張）を入れ、下記リンクを開いてインストール
@@ -47,10 +48,10 @@
 
 `suno_get_credits` / `suno_generate_song`（参照・モデル指定対応） / `suno_generate_from_description` / `suno_check_status` / `suno_wait_for_songs` / `suno_get_recent` / `suno_generate_lyrics` / `suno_get_clip` / `suno_download_song` / `suno_extend_song` / `suno_concat_clips` / `suno_generate_stems` / `suno_create_playlist` / `suno_get_playlist` / `suno_add_playlist_tracks` / `suno_remove_playlist_tracks` / `suno_generate_speech` / `suno_generate_sound` / `suno_get_models` / `suno_upload_image` / `suno_upload_audio` / `suno_create_persona` / `suno_check_upload` / `suno_get_persona`
 
-Claude Codeへの登録例:
+Claude Codeへの登録例（リポジトリルートから）:
 
 ```sh
-claude mcp add suno -- bun run /path/to/suno-api/packages/mcp/src/index.ts
+claude mcp add suno-api-mcp -- bun run ./packages/mcp/src/index.ts
 ```
 
 ## 付録: Cookie手貼り（Bridgeが使えない場合のみ）
