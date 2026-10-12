@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Suno Bridge (self-host api)
 // @namespace    suno-selfhost
-// @version      0.7.2
+// @version      0.7.3
 // @updateURL     https://raw.githubusercontent.com/seitanmen/suno-api-mcp/main/packages/userscript/suno-bridge.user.js
 // @downloadURL   https://raw.githubusercontent.com/seitanmen/suno-api-mcp/main/packages/userscript/suno-bridge.user.js
 // @description  Sunoのセッション（JWT/Cookie）をローカルAPIに中継する
@@ -304,44 +304,39 @@
   }
 
   function render() {
-    let el = document.getElementById("suno-bridge-panel");
+    const ok = !!state.jwt;
+    let fab = document.getElementById("suno-bridge-fab");
+    if (!fab) {
+      fab = document.createElement("div");
+      fab.id = "suno-bridge-fab";
+      fab.textContent = "\u266A";
+      fab.onclick = () => {
+        const c = document.getElementById("suno-bridge-card");
+        if (c) c.style.display = c.style.display === "none" ? "block" : "none";
+      };
+      document.documentElement.appendChild(fab);
+    }
+    fab.style.cssText =
+      "position:fixed;right:16px;bottom:16px;z-index:999999;width:44px;height:44px;border-radius:50%;" +
+      "background:" + (ok ? "#16a34a" : "#7c3aed") + ";color:#fff;font:20px/44px sans-serif;text-align:center;" +
+      "cursor:pointer;opacity:.9;box-shadow:0 2px 8px rgba(0,0,0,.4);user-select:none";
+    let el = document.getElementById("suno-bridge-card");
     if (!el) {
       el = document.createElement("div");
-      el.id = "suno-bridge-panel";
+      el.id = "suno-bridge-card";
       el.style.cssText =
-        "position:fixed;right:12px;bottom:12px;z-index:999999;background:#111;color:#eee;" +
-        "font:12px sans-serif;padding:10px 12px;border-radius:8px;opacity:.92;max-width:280px";
+        "position:fixed;right:16px;bottom:68px;z-index:999999;background:#111;color:#eee;" +
+        "font:12px sans-serif;padding:10px 12px;border-radius:8px;opacity:.95;max-width:240px;display:none";
       document.documentElement.appendChild(el);
     }
-    const jwtShort = state.jwt ? state.jwt.slice(0, 10) + "..." : "未取得";
     el.innerHTML =
-      "<b>Suno Bridge v0.7.2</b><br>JWT: " + jwtShort +
+      "<b>Suno Bridge</b> " + (ok ? "接続中" : "未接続") +
       "<br>送信: " + (state.sent ? new Date(state.sent).toLocaleTimeString() : "—") +
       (state.error ? "<br><span style='color:#f88'>" + state.error + "</span>" : "") +
-      "<br><button id='suno-bridge-copy'>コピー</button> " +
-      "<button id='suno-bridge-push'>今すぐ送信</button> " +
-      "<button id='suno-bridge-dom'>DOM調査</button>" +
-      "<button id='suno-bridge-form'>フォーム調査</button>" +
-      "<pre id='suno-bridge-apilog' style='max-height:100px;overflow:auto'></pre>" +
-      "<textarea id='suno-bridge-domout' style='width:100%;height:60px;display:none'></textarea>";
-    document.getElementById("suno-bridge-copy").onclick = () => {
-      navigator.clipboard.writeText(JSON.stringify({ jwt: state.jwt, cookies: parseCookies() }));
-    };
+      "<br><button id='suno-bridge-push'>今すぐ送信</button>";
     document.getElementById("suno-bridge-push").onclick = () => {
       lastSent = 0;
       push();
-    };
-    document.getElementById("suno-bridge-dom").onclick = () => {
-      const t = document.getElementById("suno-bridge-domout");
-      t.style.display = "block";
-      t.value = JSON.stringify(domDump(), null, 1).slice(0, 3000);
-      t.select();
-    };
-    document.getElementById("suno-bridge-form").onclick = () => {
-      const t = document.getElementById("suno-bridge-domout");
-      t.style.display = "block";
-      t.value = JSON.stringify(formDump(), null, 1).slice(0, 5000);
-      t.select();
     };
   }
 
@@ -380,7 +375,7 @@
   }
 
   new MutationObserver(() => {
-    if (!document.getElementById("suno-bridge-panel")) render();
+    if (!document.getElementById("suno-bridge-fab")) render();
   }).observe(document.documentElement, { childList: true, subtree: true });
   render();
 })();

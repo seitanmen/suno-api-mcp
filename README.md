@@ -2,25 +2,53 @@
 
 自分の Suno アカウントで動くセルフホスト API + MCP ブリッジ。非公式・個人利用向け。
 
-## 使い方（推奨: Tampermonkey Bridge）
+## 導入（3ステップ）
 
-1. `bun run api` を起動（`:4123`）
-2. 通常ブラウザに Tampermonkey を入れ、`packages/userscript/suno-bridge.user.js` を新規スクリプトとして登録
-3. `suno.com` を開いてログイン（普段のブラウザなのでGoogleログインも可、自動化検出なし）
-4. ページを1〜2回操作すると右下パネルに JWT 取得表示→自動でローカルAPIへ送信
-5. `bun run doctor` で session/JWT/credits を確認
-6. MCP: `bun run mcp`（stdio）
+1. APIを起動する
+   ```sh
+   bun install && bun run api   # :4123
+   ```
+2. Tampermonkey（Chrome拡張）を入れ、下記リンクを開いてインストール
+   https://raw.githubusercontent.com/seitanmen/suno-api-mcp/main/packages/userscript/suno-bridge.user.js
+3. `suno.com` を開く（普段のブラウザなのでGoogleログインも可）。右下の丸アイコンが緑になれば接続完了。セッションは60秒ごとに自動送信される。
 
-JWT は使うたびに再取得・再送されるため、有効期限切れは自動回復する。
+## API（`http://localhost:4123`）
 
-## 使い方（代替: Cookie手貼り）
+| 機能 | メソッド・パス | 状態 |
+|---|---|---|
+| 残量確認 | `GET /v1/credits` | ✅ |
+| シンプル生成 | `POST /v1/songs {prompt, tags?, model?}` | ✅ |
+| カスタム生成 | `POST /v1/songs {prompt, tags, title, negative_tags?, vocal_gender?, gen_duration?, is_max_mode?, control_sliders?}` | ✅ |
+| 歌詞生成 | `POST /v1/lyrics {prompt}` | ✅ |
+| 生成待ち | `GET /v1/songs?ids=...` / `POST /v1/wait` | ✅ |
+| ライブラリ | `GET /v1/library` | ✅ |
+| クリップ取得 | `GET /v1/clips?id=...` | ✅ |
+| 延長 | `POST /v1/extend {audio_id, ...}` | ✅ |
+| ステム分離 | `POST /v1/stems {song_id}` | ✅ |
+| プレイリスト作成・取得・追加・削除 | `POST /v1/playlists` / `GET /v1/playlists/:id` / `POST .../tracks` / `POST .../tracks/remove` | ✅ |
+| 結合 | `POST /v1/concat {clip_id}` | ⚠️ 形状確定も対象クリップ依存で未成功 |
+| 音声バイト取得 | `audio_url`（暗号化＋DL権限制限あり） | ❌ 取得不可 |
+| スピーチ／サウンド／パーソナライズ | — | ❌ 未対応 |
 
-1. 通常ブラウザで `suno.com/create` を開き、F12→Network→リロード
-2. `?__clerk_api_version` を含むリクエスト→Headers→`Cookie` の値全体をコピー
+既定モデル: `chirp-hawk`（v6系で動作確認済み）。
+
+## MCPツール（15）
+
+`suno_get_credits` / `suno_generate_song`（高度なオプション対応） / `suno_generate_from_description` / `suno_check_status` / `suno_wait_for_songs` / `suno_get_recent` / `suno_generate_lyrics` / `suno_get_clip` / `suno_extend_song` / `suno_concat_clips` / `suno_generate_stems` / `suno_create_playlist` / `suno_get_playlist` / `suno_add_playlist_tracks` / `suno_remove_playlist_tracks`
+
+Claude Codeへの登録例:
+
+```sh
+claude mcp add suno -- bun run /path/to/suno-api/packages/mcp/src/index.ts
+```
+
+## 付録: Cookie手貼り（Bridgeが使えない場合のみ）
+
+1. `suno.com/create` を開き、F12→Network→リロード
+2. `?__clerk_api_version` を含むリクエスト→Headers→`Cookie` 全体をコピー
 3. `bun run login:cookie "<貼付>"`
 
 ## 注意
 
 - 非公式リバース実装。Suno の仕様変更で壊れることがある。自己責任。
-- hCaptcha が出た場合は Cookie 取り直し。
-- `~/.suno-api/` に Cookie を保存（他人と共有しないこと）。
+- `~/.suno-api/` にセッションを保存（他人と共有しないこと）。
