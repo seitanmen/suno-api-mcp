@@ -1,5 +1,5 @@
 import { SunoClient } from "../../core/src/client.ts";
-import { loadCookies, saveCookies, saveJwt } from "../../core/src/session.ts";
+import { loadCookies, loadJwt, saveCookies, saveJwt } from "../../core/src/session.ts";
 
 const PORT = Number(process.env.PORT ?? 4123);
 function getClient(): SunoClient {
@@ -29,14 +29,14 @@ Bun.serve({
       if (url.pathname === "/v1/probe" && req.method === "POST") {
         const body = (await req.json()) as any;
         const id = Math.random().toString(36).slice(2, 10);
-        probes.set(id, { ...body, claimed: false });
+        probes.set(id, { ...body, claimed: false, token: body.token ?? loadJwt()?.jwt ?? null });
         return json({ id });
       }
       if (url.pathname === "/v1/probe/pending" && req.method === "GET") {
         for (const [id, p] of probes) {
           if (!p.claimed) {
             p.claimed = true;
-            return json({ id, method: p.method, path: p.path, body: p.body ?? null, base: p.base ?? null });
+            return json({ id, method: p.method, path: p.path, body: p.body ?? null, base: p.base ?? null, token: p.token ?? null });
           }
         }
         return new Response(null, { status: 204 });
@@ -53,7 +53,7 @@ Bun.serve({
       if (url.pathname === "/v1/pfetch" && req.method === "POST") {
         const body = (await req.json()) as any;
         const id = Math.random().toString(36).slice(2, 10);
-        probes.set(id, { ...body, claimed: false, full: true });
+        probes.set(id, { ...body, claimed: false, full: true, token: body.token ?? loadJwt()?.jwt ?? null });
         for (let i = 0; i < 100; i++) {
           await new Promise((r) => setTimeout(r, 300));
           if (probeResults.has(id)) {
