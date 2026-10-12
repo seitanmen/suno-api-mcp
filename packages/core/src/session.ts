@@ -44,12 +44,12 @@ export function ensureSunoDir() {
   ensureDir();
 }
 
-export function loadJwt(): string | null {
+export function loadJwt(): { jwt: string; at: number } | null {
   if (!existsSync(JWT_PATH)) return null;
   try {
     const { jwt, at } = JSON.parse(readFileSync(JWT_PATH, "utf8"));
     if (!jwt || Date.now() - at > JWT_MAX_AGE_MS) return null;
-    return jwt;
+    return { jwt, at };
   } catch {
     return null;
   }

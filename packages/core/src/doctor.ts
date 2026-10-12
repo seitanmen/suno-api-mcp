@@ -7,8 +7,12 @@ console.log(`profile: ${PROFILE_DIR} (${existsSync(PROFILE_DIR) ? "あり" : "�
 console.log(`cookies: ${COOKIES_PATH} (${existsSync(COOKIES_PATH) ? "あり" : "なし"})`);
 try {
   const c = new SunoClient();
-  const sid = await c.getSessionId();
-  console.log(`session: OK (${sid.slice(0, 8)}...)`);
+  try {
+    const sid = await c.getSessionId();
+    console.log(`session: OK (${sid.slice(0, 8)}...)`);
+  } catch {
+    console.log("session: JWTのみモード（__client はHttpOnlyのため取得不可）");
+  }
   await c.keepAlive();
   console.log("jwt: OK");
   console.log("credits:", JSON.stringify(await c.credits()));

@@ -1,6 +1,7 @@
 import {
   CLERK_API_VERSION,
   CLERK_BASE,
+  JWT_MAX_AGE_MS,
   STUDIO_BASE,
   cookieHeader,
   loadCookies,
@@ -28,10 +29,13 @@ export class SunoClient {
   private cookies: Record<string, string>;
   private sid: string | null = null;
   private jwt: string | null = null;
+  private jwtAt = 0;
 
   constructor(cookies?: Record<string, string>) {
     this.cookies = cookies ?? loadCookies();
-    this.jwt = loadJwt();
+    const stored = loadJwt();
+    this.jwt = stored?.jwt ?? null;
+    this.jwtAt = stored?.at ?? 0;
     if (Object.keys(this.cookies).length === 0 && !this.jwt) {
       throw new Error("セッションがありません。Tampermonkey Bridge か `bun run login:cookie` で連携してください");
     }
@@ -67,9 +71,9 @@ export class SunoClient {
 
   /** Refresh the short-lived JWT used by studio APIs. */
   async keepAlive(): Promise<string> {
+    if (this.jwt && Date.now() - this.jwtAt < JWT_MAX_AGE_MS) return this.jwt;
     if (!this.cookies["__client"]) {
-      if (this.jwt) return this.jwt;
-      throw new Error("__client がなくJWT更新不可。suno.com を開いて Bridge に再送させてください");
+      throw new Error("JWT期限切れ・__clientなし。suno.com を開いて Bridge に再送させてください");
     }
     if (!this.sid) await this.getSessionId();
     const clientCookie = this.cookies["__client"]!;
@@ -83,6 +87,7 @@ export class SunoClient {
     const data = (await res.json()) as any;
     if (!data?.jwt) throw new Error("JWTが取得できませんでした");
     this.jwt = data.jwt;
+    this.jwtAt = Date.now();
     saveJwt(data.jwt);
     return this.jwt;
   }
