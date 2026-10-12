@@ -43,11 +43,28 @@ Bun.serve({
       }
       if (url.pathname === "/v1/probe/result" && req.method === "POST") {
         const body = (await req.json()) as any;
-        probeResults.set(body.id, { status: body.status, text: String(body.text ?? "").slice(0, 3000), at: Date.now() });
+        const cap = probes.get(body.id)?.full ? 500000 : 3000;
+        probeResults.set(body.id, { status: body.status, text: String(body.text ?? "").slice(0, cap), at: Date.now() });
         return json({ ok: true });
       }
       if (url.pathname === "/v1/probe/results" && req.method === "GET") {
         return json(Object.fromEntries(probeResults));
+      }
+      if (url.pathname === "/v1/pfetch" && req.method === "POST") {
+        const body = (await req.json()) as any;
+        const id = Math.random().toString(36).slice(2, 10);
+        probes.set(id, { ...body, claimed: false, full: true });
+        for (let i = 0; i < 100; i++) {
+          await new Promise((r) => setTimeout(r, 300));
+          if (probeResults.has(id)) {
+            const res = probeResults.get(id);
+            probeResults.delete(id);
+            probes.delete(id);
+            return json(res);
+          }
+        }
+        probes.delete(id);
+        return json({ status: 0, text: "probe timeout: browser tab not polling?" }, 504);
       }
       if (url.pathname === "/v1/auth/ingest" && req.method === "POST") {
         const body = (await req.json()) as any;
