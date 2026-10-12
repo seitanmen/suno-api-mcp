@@ -98,6 +98,57 @@ export class SunoClient {
     return this.jwt;
   }
 
+  /** Captcha-era fallback: drive the real suno.com UI via Tampermonkey bridge + trusted keyboard.
+   *  Chain (live-verified 2026-10-12): apilog CMDCALL fills prompt & focuses 作成 → osascript Return → new clips in feed. */
+  private async bridgeCall(id: string, js: string, timeoutMs = 30000): Promise<any> {
+    await fetch("http://localhost:4123/v1/apilog", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ line: `CMDCALL ${id} ||| ${js}` }),
+    });
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 4000));
+      const d: any = await (await fetch("http://localhost:4123/v1/apilog")).json().catch(() => null);
+      const hit = (d?.lines ?? []).find((l: string) => l.startsWith(`CMDRES {"id":"${id}`));
+      if (hit) return JSON.parse(hit.slice(8));
+    }
+    throw new Error("bridge command timeout（suno.comタブとbridge 0.7.7+が必要）");
+  }
+
+  async generateViaUI(params: { prompt: string }): Promise<string[]> {
+    if (process.platform !== "darwin") throw new Error("generateViaUI はmacOSのみ（osascript依存）");
+    const before = new Set((await this.feed()).map((c) => c.id));
+    const { execFile } = await import("node:child_process");
+    const sh = (cmd: string) => new Promise<void>((res, rej) => execFile("osascript", ["-e", cmd], (e: any) => (e ? rej(e) : res())));
+    const id = "gen" + Date.now().toString(36).slice(-8);
+    const prompt = params.tags ? `${params.prompt} (${params.tags})` : params.prompt;
+    const fill = await this.bridgeCall(id, `
+      const ta = [...document.querySelectorAll("textarea")].find(t => t.id !== "BFI_DATA");
+      if (!ta) return "NO-TA";
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
+      setter.call(ta, ${JSON.stringify(prompt)});
+      ta.dispatchEvent(new Event("input", { bubbles: true }));
+      await new Promise(r => setTimeout(r, 300));
+      const btn = [...document.querySelectorAll("button")].find(b => (b.textContent || "").trim() === "作成" && b.getBoundingClientRect().width > 100);
+      if (!btn) return "NO-BTN";
+      btn.scrollIntoView({ block: "center" });
+      btn.focus();
+      return "FOCUSED";
+    `);
+    const v = String(fill?.v ?? "");
+    if (!v.includes("FOCUSED")) throw new Error(`generateViaUI: ${v || "no reply"}`);
+    await sh('tell application "Google Chrome" to activate');
+    await new Promise((r) => setTimeout(r, 600));
+    await sh('tell application "System Events" to keystroke return');
+    for (let i = 0; i < 12; i++) {
+      await new Promise((r) => setTimeout(r, 8000));
+      const fresh = (await this.feed()).filter((c) => !before.has(c.id));
+      if (fresh.length > 0) return fresh.map((c) => c.id);
+    }
+    throw new Error("generateViaUI: 新しいクリップが現れません（クレジット・可視性・bridgeを確認）");
+  }
+
   private async api<T>(method: string, path: string, body?: unknown): Promise<T> {
     await this.keepAlive();
     const res = await fetch(`${STUDIO_BASE}${path}`, {
@@ -202,8 +253,15 @@ export class SunoClient {
       ...(opts.overpainting_clip_id ? { overpainting_clip_id: opts.overpainting_clip_id } : {}),
       ...(opts.user_uploaded_image_ids?.length ? { user_uploaded_image_ids: opts.user_uploaded_image_ids } : {}),
     };
-    const data = await this.api<any>("POST", "/api/generate/v2/", payload);
-    return (data.clips as any[]).map((c) => c.id as string);
+    try {
+      const data = await this.api<any>("POST", "/api/generate/v2/", payload);
+      return (data.clips as any[]).map((c) => c.id as string);
+    } catch (e: any) {
+      if (/422|token_validation|couldn't verify/i.test(String(e.message)) && process.env.SUNO_UI_FALLBACK !== "0" && !opts.audio_refs?.length && !opts.cover_clip_id && !opts.sample_clip_ids?.length) {
+        return this.generateViaUI({ prompt: opts.prompt, tags: opts.tags } as any);
+      }
+      throw e;
+    }
   }
 
   async generateSimple(description: string, make_instrumental = false) {
