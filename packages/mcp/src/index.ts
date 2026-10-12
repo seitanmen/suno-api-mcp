@@ -275,4 +275,28 @@ server.registerTool(
   })
 );
 
+server.registerTool(
+  "suno_check_upload",
+  {
+    description: "アップロード処理ステータス照会（kind=audio|image、id=upload_id|asset_id）",
+    inputSchema: { kind: z.enum(["audio", "image"]), id: z.string() },
+  },
+  async (args) => ({
+    content: [{ type: "text", text: JSON.stringify(args.kind === "audio"
+      ? await getClient().audioUploadStatus(args.id)
+      : await getClient().imageAssetStatus(args.id)) }],
+  })
+);
+
+server.registerTool(
+  "suno_get_persona",
+  {
+    description: "ボイス（persona）取得",
+    inputSchema: { persona_id: z.string() },
+  },
+  async (args) => ({
+    content: [{ type: "text", text: JSON.stringify(await getClient().getPersona(args.persona_id)) }],
+  })
+);
+
 await server.connect(new StdioServerTransport());

@@ -329,6 +329,16 @@ export class SunoClient {
     return { upload_id: uploadId, clip_id: clip.clip_id as string, title: status.title, has_vocal: status.has_vocal };
   }
 
+  /** Audio upload status query (processing/complete/error + error_type e.g. upload_failure_match_acrcloud). */
+  async audioUploadStatus(uploadId: string) {
+    return this.api<any>("GET", `/api/uploads/audio/${uploadId}/`);
+  }
+
+  /** Image asset status query (ready/failed). */
+  async imageAssetStatus(assetId: string) {
+    return this.api<any>("GET", `/api/visual/assets/${assetId}`);
+  }
+
   /** Persona (voice) create passthrough. vox_audio_id typically comes from an uploaded/voice clip. */
   async createPersona(params: Record<string, unknown>) {
     return this.api<any>("POST", "/api/persona/create/", params);

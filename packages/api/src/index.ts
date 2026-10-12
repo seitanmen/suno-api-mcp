@@ -139,6 +139,16 @@ Bun.serve({
         const bin = Uint8Array.from(atob(body.data_base64), (ch) => ch.charCodeAt(0));
         return json(await getClient().uploadAudio(bin, body.filename, body), 202);
       }
+      if (url.pathname === "/v1/uploads/audio" && req.method === "GET") {
+        const id = url.searchParams.get("id");
+        if (!id) return json({ error: "id required" }, 400);
+        return json(await getClient().audioUploadStatus(id));
+      }
+      if (url.pathname === "/v1/uploads/image" && req.method === "GET") {
+        const id = url.searchParams.get("id");
+        if (!id) return json({ error: "id required" }, 400);
+        return json(await getClient().imageAssetStatus(id));
+      }
       if (url.pathname === "/v1/persona" && req.method === "POST") {
         const body = (await req.json()) as any;
         return json(await getClient().createPersona(body), 202);
