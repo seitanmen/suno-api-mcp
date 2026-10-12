@@ -1,0 +1,14 @@
+{
+  "name": "suno-api-selfhost",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Self-hosted Suno API + MCP bridge (own-account, browser-profile auth). Unofficial, for personal use.",
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "login": "bun run packages/core/src/login.ts",
+    "login:cookie": "bun run packages/core/src/login-cookie.ts",
+    "api": "bun run packages/api/src/index.ts",
+    "mcp": "bun run packages/mcp/src/index.ts",
+    "doctor": "bun run packages/core/src/doctor.ts"
+  }
+}

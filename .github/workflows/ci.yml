@@ -1,0 +1,15 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  check:
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - run: bunx playwright install chromium
+      - run: bun run api & sleep 5; curl -sf http://localhost:4123/health
+      - run: bun run doctor || true
