@@ -30,13 +30,15 @@
 | プレイリスト作成・取得・追加・削除 | `POST /v1/playlists` / `GET /v1/playlists/:id` / `POST .../tracks` / `POST .../tracks/remove` | ✅ |
 | 結合 | `POST /v1/concat {clip_id}` | ⚠️ 形状確定も対象クリップ依存で未成功 |
 | 音声取得（再生経路・DL数非消費） | `GET /v1/download?id=...` | ✅ |
-| スピーチ／サウンド／パーソナライズ | — | ❌ 未対応 |
+| スピーチ生成 | `POST /v1/speech {prompt, backing_music?, vocal_gender?}` | ✅ |
+| 効果音生成 | `POST /v1/sounds {prompt}` | ✅ |
+| パーソナライズ単体API | —（生成時オプション `use_personalization` として対応） | ⚠️ |
 
 既定モデル: `chirp-hawk`（v6系で動作確認済み）。
 
-## MCPツール（16）
+## MCPツール（18）
 
-`suno_get_credits` / `suno_generate_song`（高度なオプション対応） / `suno_generate_from_description` / `suno_check_status` / `suno_wait_for_songs` / `suno_get_recent` / `suno_generate_lyrics` / `suno_get_clip` / `suno_download_song` / `suno_extend_song` / `suno_concat_clips` / `suno_generate_stems` / `suno_create_playlist` / `suno_get_playlist` / `suno_add_playlist_tracks` / `suno_remove_playlist_tracks`
+`suno_get_credits` / `suno_generate_song`（高度なオプション対応） / `suno_generate_from_description` / `suno_check_status` / `suno_wait_for_songs` / `suno_get_recent` / `suno_generate_lyrics` / `suno_get_clip` / `suno_download_song` / `suno_extend_song` / `suno_concat_clips` / `suno_generate_stems` / `suno_create_playlist` / `suno_get_playlist` / `suno_add_playlist_tracks` / `suno_remove_playlist_tracks` / `suno_generate_speech` / `suno_generate_sound`
 
 Claude Codeへの登録例:
 

@@ -188,6 +188,23 @@ export class SunoClient {
     return (data.clips as any[]).map((c) => c.id as string);
   }
 
+  /** Speech (goose model via v2-web). backing_music=false for dry voiceover. */
+  async generateSpeech(prompt: string, opts?: { backing_music?: boolean; vocal_gender?: "male" | "female" }) {
+    const data = await this.api<any>("POST", "/api/generate/v2-web/", {
+      prompt,
+      is_speech: true,
+      ...(typeof opts?.backing_music === "boolean" ? { backing_music: opts.backing_music } : {}),
+      ...(opts?.vocal_gender ? { vocal_gender: opts.vocal_gender } : {}),
+    });
+    return (data.clips as any[]).map((c) => c.id as string);
+  }
+
+  /** Sound effects (seeds model via v2-web). */
+  async generateSound(prompt: string) {
+    const data = await this.api<any>("POST", "/api/generate/v2-web/", { prompt, task: "sound" });
+    return (data.clips as any[]).map((c) => c.id as string);
+  }
+
   async feed(ids?: string[]): Promise<SongInfo[]> {
     const q = ids?.length ? `?ids=${ids.join(",")}` : "";
     const data = await this.api<any>("GET", `/api/feed/v2${q}`);

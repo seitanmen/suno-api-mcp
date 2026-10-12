@@ -30,13 +30,15 @@
 | 플레이리스트(생성/조회/추가/삭제) | `POST /v1/playlists` / `GET /v1/playlists/:id` / `POST .../tracks` / `POST .../tracks/remove` | ✅ |
 | 결합 | `POST /v1/concat {clip_id}` | ⚠️ 형식 확인됨, 클립에 따라 다름 |
 | 오디오 취득(재생 경로・다운로드 수 미소비) | `GET /v1/download?id=...` | ✅ |
-| 스피치 / 사운드 / 개인화 | — | ❌ 미지원 |
+| 스피치 생성 | `POST /v1/speech {prompt, backing_music?, vocal_gender?}` | ✅ |
+| 효과음 생성 | `POST /v1/sounds {prompt}` | ✅ |
+| 개인화 단독 API | — (생성 옵션 `use_personalization`으로 대응) | ⚠️ |
 
 기본 모델: `chirp-hawk`(v6 계열에서 동작 확인).
 
-## MCP 도구 (16개)
+## MCP 도구 (18개)
 
-`suno_get_credits` / `suno_generate_song`(고급 옵션) / `suno_generate_from_description` / `suno_check_status` / `suno_wait_for_songs` / `suno_get_recent` / `suno_generate_lyrics` / `suno_get_clip` / `suno_download_song` / `suno_extend_song` / `suno_concat_clips` / `suno_generate_stems` / `suno_create_playlist` / `suno_get_playlist` / `suno_add_playlist_tracks` / `suno_remove_playlist_tracks`
+`suno_get_credits` / `suno_generate_song`(고급 옵션) / `suno_generate_from_description` / `suno_check_status` / `suno_wait_for_songs` / `suno_get_recent` / `suno_generate_lyrics` / `suno_get_clip` / `suno_download_song` / `suno_extend_song` / `suno_concat_clips` / `suno_generate_stems` / `suno_create_playlist` / `suno_get_playlist` / `suno_add_playlist_tracks` / `suno_remove_playlist_tracks` / `suno_generate_speech` / `suno_generate_sound`
 
 Claude Code 등록 예:
 

@@ -30,13 +30,15 @@
 | 播放列表（创建/获取/添加/删除） | `POST /v1/playlists` / `GET /v1/playlists/:id` / `POST .../tracks` / `POST .../tracks/remove` | ✅ |
 | 拼接 | `POST /v1/concat {clip_id}` | ⚠️ 形状已知，取决于目标片段 |
 | 音频获取（播放路径、不计下载次数） | `GET /v1/download?id=...` | ✅ |
-| 语音 / 音效 / 个性化 | — | ❌ 不支持 |
+| 语音合成 | `POST /v1/speech {prompt, backing_music?, vocal_gender?}` | ✅ |
+| 音效生成 | `POST /v1/sounds {prompt}` | ✅ |
+| 独立个性化 API | —（已作为生成选项 `use_personalization` 支持） | ⚠️ |
 
 默认模型：`chirp-hawk`（v6 系列已验证）。
 
-## MCP 工具（16 个）
+## MCP 工具（18 个）
 
-`suno_get_credits` / `suno_generate_song`（高级选项） / `suno_generate_from_description` / `suno_check_status` / `suno_wait_for_songs` / `suno_get_recent` / `suno_generate_lyrics` / `suno_get_clip` / `suno_download_song` / `suno_extend_song` / `suno_concat_clips` / `suno_generate_stems` / `suno_create_playlist` / `suno_get_playlist` / `suno_add_playlist_tracks` / `suno_remove_playlist_tracks`
+`suno_get_credits` / `suno_generate_song`（高级选项） / `suno_generate_from_description` / `suno_check_status` / `suno_wait_for_songs` / `suno_get_recent` / `suno_generate_lyrics` / `suno_get_clip` / `suno_download_song` / `suno_extend_song` / `suno_concat_clips` / `suno_generate_stems` / `suno_create_playlist` / `suno_get_playlist` / `suno_add_playlist_tracks` / `suno_remove_playlist_tracks` / `suno_generate_speech` / `suno_generate_sound`
 
 注册到 Claude Code：
 

@@ -64,6 +64,30 @@ server.registerTool(
 );
 
 server.registerTool(
+  "suno_generate_speech",
+  {
+    description: "スピーチ生成（ナレーション等。backing_music=falseでドライ声）",
+    inputSchema: { prompt: z.string(), backing_music: z.boolean().optional(), vocal_gender: z.enum(["male", "female"]).optional() },
+  },
+  async (args) => {
+    const ids = await getClient().generateSpeech(args.prompt, args);
+    return { content: [{ type: "text", text: JSON.stringify({ ids }) }] };
+  }
+);
+
+server.registerTool(
+  "suno_generate_sound",
+  {
+    description: "効果音生成（雨・雷等）",
+    inputSchema: { prompt: z.string() },
+  },
+  async (args) => {
+    const ids = await getClient().generateSound(args.prompt);
+    return { content: [{ type: "text", text: JSON.stringify({ ids }) }] };
+  }
+);
+
+server.registerTool(
   "suno_check_status",
   { description: "生成ステータス照会", inputSchema: { ids: z.array(z.string()) } },
   async (args) => ({

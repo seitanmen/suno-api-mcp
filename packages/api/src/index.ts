@@ -106,6 +106,16 @@ Bun.serve({
         const body = (await req.json()) as any;
         return json({ text: await getClient().generateLyrics(body.prompt) });
       }
+      if (url.pathname === "/v1/speech" && req.method === "POST") {
+        const body = (await req.json()) as any;
+        if (!body.prompt) return json({ error: "prompt required" }, 400);
+        return json({ ids: await getClient().generateSpeech(body.prompt, body) }, 202);
+      }
+      if (url.pathname === "/v1/sounds" && req.method === "POST") {
+        const body = (await req.json()) as any;
+        if (!body.prompt) return json({ error: "prompt required" }, 400);
+        return json({ ids: await getClient().generateSound(body.prompt) }, 202);
+      }
       if (url.pathname === "/v1/clips" && req.method === "GET") {
         const id = url.searchParams.get("id");
         if (!id) return json({ error: "id required" }, 400);
