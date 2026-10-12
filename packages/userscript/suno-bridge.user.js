@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Suno Bridge (self-host api)
 // @namespace    suno-selfhost
-// @version      0.7.6
+// @version      0.7.7
 // @updateURL     https://raw.githubusercontent.com/seitanmen/suno-api-mcp/main/packages/userscript/suno-bridge.user.js
 // @downloadURL   https://raw.githubusercontent.com/seitanmen/suno-api-mcp/main/packages/userscript/suno-bridge.user.js
 // @description  Sunoのセッション（JWT/Cookie）をローカルAPIに中継する
@@ -77,6 +77,23 @@
   const isTop = (() => { try { return window.self === window.top; } catch (_) { return false; } })();
 
   function pageHook() {
+    // command execution in PAGE context (called from content script via event)
+    window.addEventListener("suno-bridge-cmd", (e) => {
+      let c;
+      try { c = typeof e.detail === "string" ? JSON.parse(e.detail) : e.detail; } catch (_) { return; }
+      const reply = (ok, val) => {
+        window.dispatchEvent(new CustomEvent("suno-bridge-cmdres", {
+          detail: JSON.stringify({ id: c.id, ok: ok, v: val === undefined ? null : val }),
+        }));
+      };
+      try {
+        const fn = new Function("return (async () => { " + c.js + " })();");
+        Promise.resolve(fn()).then(
+          (r) => { let out; try { out = JSON.stringify(r); } catch (_) { out = String(r); } reply(true, out); },
+          (err) => reply(false, String(err && err.stack || err).slice(0, 800))
+        );
+      } catch (err) { reply(false, String(err).slice(0, 500)); }
+    });
     const emitJwt = (auth) => {
       const m = typeof auth === "string" && auth.match(/^Bearer (.+)$/);
       if (m) window.dispatchEvent(new CustomEvent("suno-bridge-jwt", { detail: m[1] }));
@@ -233,6 +250,41 @@
   }
 
   window.addEventListener("suno-bridge-jwt", (e) => handleJwt(e.detail));
+  // command channel over apilog (works with any server build): poll CMDCALL, eval in page, post CMDRES
+  const cmdSeen = GM_getValue("cmd_seen", []);
+  window.addEventListener("suno-bridge-cmdres", (e) => {
+    try {
+      GM_xmlhttpRequest({
+        method: "POST",
+        url: "http://localhost:4123/v1/apilog",
+        headers: { "Content-Type": "application/json" },
+        data: JSON.stringify({ line: "CMDRES " + String(e.detail) }),
+      });
+    } catch (_) {}
+  });
+  setInterval(() => {
+    GM_xmlhttpRequest({
+      method: "GET",
+      url: "http://localhost:4123/v1/apilog",
+      onload: (res) => {
+        try {
+          const d = JSON.parse(res.responseText);
+          const lines = d.lines || [];
+          for (const line of lines) {
+            if (typeof line !== "string" || !line.startsWith("CMDCALL ")) continue;
+            const id = line.slice(8, 20);
+            if (cmdSeen.includes(id)) continue;
+            cmdSeen.push(id);
+            while (cmdSeen.length > 50) cmdSeen.shift();
+            GM_setValue("cmd_seen", cmdSeen);
+            const bar = line.indexOf(" ||| ");
+            const js = bar > 0 ? line.slice(bar + 5) : "null";
+            window.dispatchEvent(new CustomEvent("suno-bridge-cmd", { detail: JSON.stringify({ id: id, js: js }) }));
+          }
+        } catch (_) {}
+      },
+    });
+  }, 3000);
   window.addEventListener("suno-bridge-api", (e) => {
     if (typeof e.detail !== "string") return;
     const sp = e.detail.indexOf(" ");
