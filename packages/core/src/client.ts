@@ -115,7 +115,8 @@ export class SunoClient {
       saveCookies(this.cookies);
     }
     if (!res.ok) throw new Error(`${method} ${path}: HTTP ${res.status} ${await res.text().then((t) => t.slice(0, 300))}`);
-    return (await res.json()) as T;
+    const text = await res.text();
+    return (text ? JSON.parse(text) : { ok: true }) as T;
   }
 
   async credits() {
