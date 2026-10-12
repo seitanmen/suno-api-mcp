@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Suno Bridge (self-host api)
 // @namespace    suno-selfhost
-// @version      0.4.0
+// @version      0.4.1
 // @description  Sunoのセッション（JWT/Cookie）をローカルAPIに中継する
 // @match        https://suno.com/*
 // @grant        GM_xmlhttpRequest
@@ -113,6 +113,7 @@
       if (!/suno\.com$|suno\.com/.test(u.hostname)) return;
       if (!u.pathname.startsWith("/api/")) return;
       let line = method + " " + u.pathname;
+      if (u.pathname.includes("update_clips") && u.search) line += u.search;
       if (body) line += " ||| " + body;
       if (apiLog[apiLog.length - 1] !== line) {
         apiLog.push(line);
