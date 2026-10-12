@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Suno Bridge (self-host api)
 // @namespace    suno-selfhost
-// @version      0.5.1
+// @version      0.6.0
 // @updateURL     https://raw.githubusercontent.com/seitanmen/suno-api-mcp/main/packages/userscript/suno-bridge.user.js
 // @downloadURL   https://raw.githubusercontent.com/seitanmen/suno-api-mcp/main/packages/userscript/suno-bridge.user.js
 // @description  Sunoのセッション（JWT/Cookie）をローカルAPIに中継する
@@ -81,6 +81,30 @@
         return origBeacon(url, data);
       };
     } catch (_) {}
+    window.addEventListener("suno-bridge-probe-run", (e) => {
+      let p;
+      try {
+        p = typeof e.detail === "string" ? JSON.parse(e.detail) : e.detail;
+      } catch (_) { return; }
+      const headers = { "Content-Type": "application/json" };
+      if (p.token) headers.Authorization = "Bearer " + p.token;
+      fetch(p.base + p.path, {
+        method: p.method,
+        credentials: "include",
+        headers: headers,
+        body: p.body ? JSON.stringify(p.body) : undefined,
+      }).then(async (res) => {
+        let text = "";
+        try { text = await res.text(); } catch (_) {}
+        window.dispatchEvent(new CustomEvent("suno-bridge-probe-done", {
+          detail: JSON.stringify({ id: p.id, status: res.status, text: text.slice(0, 3000) }),
+        }));
+      }).catch((err) => {
+        window.dispatchEvent(new CustomEvent("suno-bridge-probe-done", {
+          detail: JSON.stringify({ id: p.id, status: 0, text: String(err).slice(0, 500) }),
+        }));
+      });
+    });
   }
 
   function injectHook() {
@@ -180,6 +204,34 @@
     } catch (_) {}
   }, 2000);
 
+  setInterval(() => {
+    GM_xmlhttpRequest({
+      method: "GET",
+      url: "http://localhost:4123/v1/probe/pending",
+      onload: (res) => {
+        if (res.status !== 200 || !res.responseText) return;
+        try {
+          const p = JSON.parse(res.responseText);
+          p.token = state.jwt;
+          window.dispatchEvent(new CustomEvent("suno-bridge-probe-run", { detail: JSON.stringify(p) }));
+          logApi("PROBE", "run " + p.id + " " + p.method + " " + p.path, null);
+        } catch (_) {}
+      },
+    });
+  }, 3000);
+  window.addEventListener("suno-bridge-probe-done", (e) => {
+    try {
+      const d = typeof e.detail === "string" ? JSON.parse(e.detail) : e.detail;
+      GM_xmlhttpRequest({
+        method: "POST",
+        url: "http://localhost:4123/v1/probe/result",
+        headers: { "Content-Type": "application/json" },
+        data: JSON.stringify(d),
+      });
+      logApi("PROBE", d.id + " -> " + d.status, String(d.text).slice(0, 300));
+    } catch (_) {}
+  });
+
   function parseCookies() {
     const out = {};
     try {
@@ -260,7 +312,7 @@
     }
     const jwtShort = state.jwt ? state.jwt.slice(0, 10) + "..." : "未取得";
     el.innerHTML =
-      "<b>Suno Bridge v0.5.1</b><br>JWT: " + jwtShort +
+      "<b>Suno Bridge v0.6.0</b><br>JWT: " + jwtShort +
       "<br>送信: " + (state.sent ? new Date(state.sent).toLocaleTimeString() : "—") +
       (state.error ? "<br><span style='color:#f88'>" + state.error + "</span>" : "") +
       "<br><button id='suno-bridge-copy'>コピー</button> " +

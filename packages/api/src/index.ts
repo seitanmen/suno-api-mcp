@@ -17,12 +17,38 @@ function json(data: unknown, status = 200): Response {
   });
 }
 
+const probes = new Map<string, any>();
+const probeResults = new Map<string, any>();
+
 Bun.serve({
   port: PORT,
   async fetch(req) {
     const url = new URL(req.url);
     try {
       if (url.pathname === "/health") return json({ ok: true });
+      if (url.pathname === "/v1/probe" && req.method === "POST") {
+        const body = (await req.json()) as any;
+        const id = Math.random().toString(36).slice(2, 10);
+        probes.set(id, { ...body, claimed: false });
+        return json({ id });
+      }
+      if (url.pathname === "/v1/probe/pending" && req.method === "GET") {
+        for (const [id, p] of probes) {
+          if (!p.claimed) {
+            p.claimed = true;
+            return json({ id, method: p.method, path: p.path, body: p.body ?? null, base: p.base ?? null });
+          }
+        }
+        return new Response(null, { status: 204 });
+      }
+      if (url.pathname === "/v1/probe/result" && req.method === "POST") {
+        const body = (await req.json()) as any;
+        probeResults.set(body.id, { status: body.status, text: String(body.text ?? "").slice(0, 3000), at: Date.now() });
+        return json({ ok: true });
+      }
+      if (url.pathname === "/v1/probe/results" && req.method === "GET") {
+        return json(Object.fromEntries(probeResults));
+      }
       if (url.pathname === "/v1/auth/ingest" && req.method === "POST") {
         const body = (await req.json()) as any;
         if (body.jwt) saveJwt(body.jwt);
