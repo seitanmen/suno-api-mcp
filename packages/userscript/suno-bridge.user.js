@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Suno Bridge (self-host api)
 // @namespace    suno-selfhost
-// @version      0.7.1
+// @version      0.7.2
 // @updateURL     https://raw.githubusercontent.com/seitanmen/suno-api-mcp/main/packages/userscript/suno-bridge.user.js
 // @downloadURL   https://raw.githubusercontent.com/seitanmen/suno-api-mcp/main/packages/userscript/suno-bridge.user.js
 // @description  Sunoのセッション（JWT/Cookie）をローカルAPIに中継する
@@ -264,6 +264,9 @@
     });
   }
 
+  setInterval(push, 60000);
+  push();
+
   const apiLog = [];
   const FULLLOG = GM_getValue("fulllog", false);
   function logApi(method, url, body) {
@@ -312,7 +315,7 @@
     }
     const jwtShort = state.jwt ? state.jwt.slice(0, 10) + "..." : "未取得";
     el.innerHTML =
-      "<b>Suno Bridge v0.7.1</b><br>JWT: " + jwtShort +
+      "<b>Suno Bridge v0.7.2</b><br>JWT: " + jwtShort +
       "<br>送信: " + (state.sent ? new Date(state.sent).toLocaleTimeString() : "—") +
       (state.error ? "<br><span style='color:#f88'>" + state.error + "</span>" : "") +
       "<br><button id='suno-bridge-copy'>コピー</button> " +
